@@ -5,4 +5,4 @@ User-agent: *
 Disallow: /
 
 # Sitemap
-#Sitemap: https://miniliga.sk/sitemap.xml
+#Sitemap: https://miniliga.online/sitemap.xml
