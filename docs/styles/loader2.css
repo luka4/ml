@@ -1,0 +1,223 @@
+:root {
+    --table-blue: var(--color-primary);
+    --table-border: var(--color-primary-hover);
+    --line: rgba(255,255,255,.85);
+
+    --racket-red: var(--color-accent);
+    --racket-shadow: var(--color-accent-hover);
+    --handle: #8b5a2b;
+
+    --ball: #ffffff;
+    --ball-outline: rgba(0,0,0,.25);
+}
+
+/* ===============================
+   Overlay
+================================ */
+#pageLoader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: transparent;
+}
+
+#pageLoader.hidden {
+    display: none;
+}
+
+body.loading {
+    overflow: hidden;
+}
+
+body.loading #pageContent {
+    display: none;
+}
+
+/* ===============================
+   Loader position
+================================ */
+.loader {
+    position: absolute;
+    top: 25vh;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+/* ===============================
+   Scene
+================================ */
+.scene {
+    position: relative;
+    width: 360px;
+    height: 160px;
+}
+
+/* ===============================
+   Table (ITTF correct)
+================================ */
+/* ===============================
+   Table (ITTF correct, with center line)
+================================ */
+.table {
+    position: absolute;
+    inset: 20px 0;
+    background: var(--table-blue);
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 3px var(--table-border);
+}
+
+/* inner white border lines */
+.table::before {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border: 3px solid var(--line);
+    border-radius: 6px;
+}
+
+/* CENTER LINE (left → right, doubles) */
+.table::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 50%;
+    height: 2px;
+    background: var(--line);
+    transform: translateY(-50%);
+    border-radius: 1px;
+}
+
+
+/* ===============================
+   Net (above table, not on it)
+================================ */
+.net {
+    position: absolute;
+    left: 50%;
+    top: 12px;                   /* slightly above table surface */
+    width: 6px;
+    height: calc(100% - 24px);
+    background: var(--color-border);
+    transform: translateX(-50%);
+    border-radius: 2px;
+    box-shadow:
+            0 0 0 1px rgba(0,0,0,.15),
+            0 3px 6px rgba(0,0,0,.25); /* lifts net visually */
+    pointer-events: none;
+}
+
+
+/* ===============================
+   Rackets
+================================ */
+.racket {
+    position: absolute;
+    top: 50%;
+    width: 36px;
+    height: 48px;
+    transform: translateY(-50%);
+}
+
+.racket::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--racket-red);
+    border-radius: 50% 50% 45% 45%;
+    box-shadow: inset 0 0 0 3px var(--racket-shadow);
+}
+
+.racket::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -18px;
+    width: 10px;
+    height: 20px;
+    background: var(--handle);
+    transform: translateX(-50%);
+    border-radius: 0 0 6px 6px;
+}
+
+/* left racket */
+.racket.left {
+    left: -10px;
+    transform-origin: right center;
+    animation: hit-left 1.8s infinite ease-in-out;
+}
+
+/* right racket */
+.racket.right {
+    right: -10px;
+    transform-origin: left center;
+    animation: hit-right 1.8s infinite ease-in-out;
+}
+
+/* ===============================
+   Ball (realistic rally)
+================================ */
+.ball {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--ball);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--ball-outline);
+    animation: rally 1.8s infinite cubic-bezier(.55,0,.45,1);
+}
+
+/* ===============================
+   Text
+================================ */
+.loading-text {
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text);
+    animation: text-pulse 1.4s ease-in-out infinite;
+}
+
+/* ===============================
+   Animations
+================================ */
+
+/*
+Ball path:
+RIGHT hit → bounce LEFT → LEFT hit → bounce RIGHT → repeat
+*/
+@keyframes rally {
+    /* right racket hit */
+    0%   { left: 310px; top: 70px; }
+
+    /* bounce on LEFT side */
+    25%  { left: 160px; top: 105px; }
+
+    /* reach left racket */
+    50%  { left: 40px;  top: 70px; }
+
+    /* bounce on RIGHT side */
+    75%  { left: 200px; top: 105px; }
+
+    /* back to right racket */
+    100% { left: 310px; top: 70px; }
+}
+
+@keyframes hit-right {
+    0%,100% { transform: translateY(-50%) rotate(0deg); }
+    8% { transform: translateY(-50%) rotate(22deg); }
+}
+
+@keyframes hit-left {
+    0%,100% { transform: translateY(-50%) rotate(0deg); }
+    52% { transform: translateY(-50%) rotate(-22deg); }
+}
+
+@keyframes text-pulse {
+    0%,100% { opacity: .4; }
+    50% { opacity: 1; }
+}

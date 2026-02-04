@@ -1,0 +1,131 @@
+:root {
+    --handle: #7c2d12;
+    --rubber-red: #dc2626;
+    --ball: #ffffff;
+    --ball-outline: rgba(0, 0, 0, 0.25);
+}
+
+/* ===============================
+   Loader overlay
+================================ */
+#pageLoader {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    align-content: space-between;
+    z-index: 9999;
+}
+
+#pageLoader.hidden {
+    display: none;
+}
+
+/* ===============================
+   Hide page while loading
+================================ */
+body.loading {
+    overflow: hidden;
+}
+
+body.loading #pageContent {
+    display: none;
+}
+
+/* ===============================
+   Loader layout
+================================ */
+.loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+}
+
+/* ===============================
+   Scene
+================================ */
+.scene {
+    position: relative;
+    width: 160px;
+    height: 160px;
+}
+
+/* ===============================
+   Ball
+================================ */
+.ball {
+    position: absolute;
+    left: 50%;
+    top: 20px;
+    width: 14px;
+    height: 14px;
+    background: var(--ball);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--ball-outline);
+    transform: translateX(-50%);
+    animation: ball-bounce 1.1s ease-in-out infinite;
+}
+
+/* ===============================
+   Racket
+================================ */
+.racket {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    width: 56px;
+    height: 72px;
+    transform-origin: bottom center;
+    transform: translateX(-50%) rotate(-15deg);
+    animation: racket-swing 1.1s ease-in-out infinite;
+}
+
+.blade {
+    width: 56px;
+    height: 56px;
+    background: var(--rubber-red);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 4px rgba(220, 38, 38, 0.3);
+}
+
+.handle {
+    width: 14px;
+    height: 30px;
+    background: var(--handle);
+    margin: -4px auto 0;
+    border-radius: 0 0 6px 6px;
+}
+
+/* ===============================
+   Text
+================================ */
+.loading-text {
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text);
+    animation: text-pulse 1.4s ease-in-out infinite;
+}
+
+/* ===============================
+   Animations
+================================ */
+@keyframes ball-bounce {
+    0%   { transform: translate(-50%, 0); }
+    50%  { transform: translate(-50%, 90px); }
+    100% { transform: translate(-50%, 0); }
+}
+
+@keyframes racket-swing {
+    0%   { transform: translateX(-50%) rotate(-18deg); }
+    50%  { transform: translateX(-50%) rotate(10deg); }
+    100% { transform: translateX(-50%) rotate(-18deg); }
+}
+
+@keyframes text-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+

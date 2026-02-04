@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RP5HV7SX60"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-RP5HV7SX60');
+    </script>
+    <title>Košická Miniliga | Miniliga Košice | Stolný tenis Košice</title>
+    <meta name="description" content="Oficiálne výsledky, tabuľky a ratingy hráčov pre Košickú stolnotenisovú Miniligu.">
+    <meta property="og:title" content="Košická Miniliga - Stolný tenis">
+    <meta property="og:description" content="Aktuálne výsledky, tabuľky a ratingy hráčov.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://miniliga.sk">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/loader.css">
+    <link rel="stylesheet" href="styles/shared.css">
+    <link rel="stylesheet" href="styles/home.css">
+    <link rel="canonical" href="https://miniliga.sk/" />
+</head>
+<body id="page-home" class="loading">
+
+<div id="pageLoader">
+    <div class="loader">
+        <div class="scene">
+            <div class="ball"></div>
+            <div class="racket">
+                <div class="blade"></div>
+                <div class="handle"></div>
+            </div>
+        </div>
+        <div class="loading-text">Načítava sa</div>
+    </div>
+</div>
+<div id="pageContent">
+    <div id="mainNavContainer"></div>
+
+    <div id="disclaimerContainer" class="disclaimer-container" style="display: none;"></div>
+
+    <div class="container" id="mainContainer">
+        <div class="stats-grid">
+            <div class="stat-card stat-card--rounds" data-flip-card role="button" tabindex="0" aria-pressed="false" aria-label="Odohraných kôl – kliknite pre viac.">
+                <div class="stat-card__inner">
+                    <div class="stat-face stat-face--front">
+                        <div class="stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 8v5l3 2"></path>
+                                <circle cx="12" cy="13" r="8"></circle>
+                                <path d="M8 3h8"></path>
+                            </svg>
+                        </div>
+                        <span class="stat-number" id="totalRounds">0</span>
+                        <span class="stat-label">Odohraných Kôl</span>
+                    </div>
+                    <div class="stat-face stat-face--back" aria-hidden="true">
+                        <div class="stat-back-text" id="statBackRoundsText">This means how many weeks were there</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-card--teams" data-flip-card role="button" tabindex="0" aria-pressed="false" aria-label="Tímových zápasov – kliknite pre viac.">
+                <div class="stat-card__inner">
+                    <div class="stat-face stat-face--front">
+                        <div class="stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="3"></circle>
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a3 3 0 0 1 0 5.75"></path>
+                            </svg>
+                        </div>
+                        <span class="stat-number" id="totalTeamMatches">0</span>
+                        <span class="stat-label">Tímových Zápasov</span>
+                    </div>
+                    <div class="stat-face stat-face--back" aria-hidden="true">
+                        <div class="stat-back-text" id="statBackTeamMatchesText">Assume one match is around 3 hours - total spent is roughly 0 hours</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-card--matches" data-flip-card role="button" tabindex="0" aria-pressed="false" aria-label="Všetkých zápasov – kliknite pre viac.">
+                <div class="stat-card__inner">
+                    <div class="stat-face stat-face--front">
+                        <div class="stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                <path d="M7 8h10"></path>
+                                <path d="M7 12h10"></path>
+                                <path d="M7 16h7"></path>
+                            </svg>
+                        </div>
+                        <span class="stat-number" id="totalMatches">0</span>
+                        <span class="stat-label">Všetkých Zápasov</span>
+                    </div>
+                    <div class="stat-face stat-face--back" aria-hidden="true">
+                        <div class="stat-back-text" id="statBackMatchesText">This is the total number of recorded singles + doubles games played in the league</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card stat-card--sets" data-flip-card role="button" tabindex="0" aria-pressed="false" aria-label="Odohraných setov – kliknite pre viac.">
+                <div class="stat-card__inner">
+                    <div class="stat-face stat-face--front">
+                        <div class="stat-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 20l10-10"></path>
+                                <path d="M12 7l5 5"></path>
+                                <circle cx="7" cy="7" r="2"></circle>
+                                <circle cx="17" cy="17" r="2"></circle>
+                            </svg>
+                        </div>
+                        <span class="stat-number" id="totalSets">0</span>
+                        <span class="stat-label">Odohraných Setov</span>
+                    </div>
+                    <div class="stat-face stat-face--back" aria-hidden="true">
+                        <div class="stat-back-text" id="statBackSetsText">Assume that each set is around 18 points - roughly 0 points were played</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="section-header"><h2 id="latestRoundTitle">Aktuálne Kolo</h2></div>
+        <div id="latestRoundContainer"></div>
+
+        <div class="section-header"><h2>Predchádzajúce Kolo: <span id="prevRoundTitle"></span></h2></div>
+        <div id="prevRoundContainer"></div>
+
+        <div id="upcomingMatchesContainer">
+            <div class="section-header"><h2>Nadchádzajúce Zápasy: <span id="nextRoundTitle"></span></h2></div>
+            <div id="upcomingList" class="upcoming-list"></div>
+        </div>
+
+        <div class="section-header"><h2>Top Skokanov Kola</h2></div>
+        <ul class="top-players-list" id="topGainersList"></ul>
+
+        <div class="section-header"><h2>Top 5 Prekvapení Kola</h2></div>
+        <div id="upsetContainer" class="upset-list"></div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3 class="footer-title">Košická Miniliga</h3>
+                <p class="footer-description">Výsledky, tabuľky a ratingy hráčov pre Košickú stolnotenisovú Miniligu. Nezávislý projekt.</p>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Navigácia</h4>
+                <nav class="footer-nav">
+                    <a href="index.html" class="footer-link">Domov</a>
+                    <a href="results.html" class="footer-link">Výsledky</a>
+                    <a href="rating.html" class="footer-link">Rating</a>
+                    <a href="table.html" class="footer-link">Tabuľka</a>
+                    <a href="prediction.html" class="footer-link">Predikcie</a>
+                </nav>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">O stránke</h4>
+                <p class="footer-text">Stolný tenis v Košiciach</p>
+                <p class="footer-text">Systém ratingov založený na ELO</p>
+                <p class="footer-text">Kontakty: <a href="mailto:info@miniliga.sk">info@miniliga.sk</a></p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copyright">&copy; <span id="currentYear"></span> miniliga.sk. Nezávislý projekt pre zobrazenie výsledkov Košickej Miniligy.</p>
+        </div>
+    </footer>
+</div>
+
+<script src="googleSheetsLoader.js?v=2"></script>
+<script src="matchData.js?v=7"></script>
+<script src="script.js?v=10"></script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RP5HV7SX60"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-RP5HV7SX60');
+    </script>
+    <title>404 - Stránka sa nenašla | Košická Miniliga</title>
+    <meta name="description" content="Stránka sa nenašla">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/loader.css">
+    <link rel="stylesheet" href="styles/shared.css">
+    <link rel="canonical" href="https://miniliga.sk/404.html" />
+    <style>
+        .error-container {
+            text-align: center;
+            padding: 3rem 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .error-code {
+            font-size: 8rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 0;
+            line-height: 1;
+            text-shadow: 3px 3px 0px rgba(0,0,0,0.1);
+        }
+        .error-title {
+            font-size: 2rem;
+            margin: 1rem 0;
+            color: #2c3e50;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 0.75rem 2rem;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .back-link:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body id="page-404" class="loading">
+
+<div id="pageLoader">
+    <div class="loader">
+        <div class="scene">
+            <div class="ball"></div>
+            <div class="racket">
+                <div class="blade"></div>
+                <div class="handle"></div>
+            </div>
+        </div>
+        <div class="loading-text">Načítava sa</div>
+    </div>
+</div>
+
+<div id="pageContent">
+    <div id="mainNavContainer"></div>
+
+    <div class="container" id="mainContainer">
+        <div class="error-container">
+            <h1 class="error-code">404</h1>
+            <h2 class="error-title">Stránka sa nenašla!</h2>
+            <p style="font-size: 1.2rem; color: #7f8c8d; margin-bottom: 2rem;">
+                Táto stránka bola možno odohraná v minulosti, ale teraz už nie je v tabuľke.
+            </p>
+
+            <a href="index.html" class="back-link">← Späť na domovskú stránku</a>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3 class="footer-title">Košická Miniliga</h3>
+                <p class="footer-description">Výsledky, tabuľky a ratingy hráčov pre Košickú stolnotenisovú Miniligu. Nezávislý projekt.</p>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Navigácia</h4>
+                <nav class="footer-nav">
+                    <a href="index.html" class="footer-link">Domov</a>
+                    <a href="results.html" class="footer-link">Výsledky</a>
+                    <a href="rating.html" class="footer-link">Rating</a>
+                    <a href="table.html" class="footer-link">Tabuľka</a>
+                    <a href="prediction.html" class="footer-link">Predikcie</a>
+                </nav>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">O stránke</h4>
+                <p class="footer-text">Stolný tenis v Košiciach</p>
+                <p class="footer-text">Systém ratingov založený na ELO</p>
+                <p class="footer-text">Kontakty: <a href="mailto:info@miniliga.sk">info@miniliga.sk</a></p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copyright">&copy; <span id="currentYear"></span> miniliga.sk. Nezávislý projekt pre zobrazenie výsledkov Košickej Miniligy.</p>
+        </div>
+    </footer>
+</div>
+
+<script src="googleSheetsLoader.js?v=2"></script>
+<script src="matchData.js?v=7"></script>
+<script src="script.js?v=10"></script>
+</body>
+</html>
+

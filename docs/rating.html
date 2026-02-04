@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RP5HV7SX60"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-RP5HV7SX60');
+    </script>
+    <title>Košická Miniliga - Rating</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="stylesheet" href="styles/loader.css">
+    <link rel="stylesheet" href="styles/shared.css">
+    <link rel="stylesheet" href="styles/rating.css">
+    <link rel="canonical" href="https://miniliga.sk/rating.html" />
+</head>
+<body id="page-rating" class="loading">
+
+<div id="pageLoader">
+    <div class="loader">
+        <div class="scene">
+            <div class="ball"></div>
+            <div class="racket">
+                <div class="blade"></div>
+                <div class="handle"></div>
+            </div>
+        </div>
+        <div class="loading-text">Načítava sa</div>
+    </div>
+</div>
+
+<div id="pageContent">
+    <div id="mainNavContainer"></div>
+
+    <div class="container" id="mainContainer">
+        <h2>Aktuálny Rating Hráčov</h2>
+        <div class="info-trigger" onclick="openInfoModal()">ⓘ Ako funguje Rating?</div>
+        <div class="scroll-hint">↔ Posuňte tabuľku pre viac štatistík</div>
+        <div class="table-wrapper" id="mainTableWrapper">
+            <table id="mainTable">
+                <thead>
+                <tr>
+                    <th rowspan="2" style="min-width: 20px;">#</th>
+                    <th rowspan="2">Hráč</th>
+                    <th rowspan="2"><div class="team-filter-wrapper"><div class="team-filter-btn" onclick="toggleTeamDropdown(event)">Tím <span style="font-size: 0.8em">▼</span></div><div id="teamDropdown" class="team-filter-dropdown"></div></div></th>
+                    <th rowspan="2">Rating</th>
+                    <th rowspan="2">Posl. <br/> Kolo</th>
+                    <th rowspan="2">Forma</th>
+<!--                    TODO temporary remove rebricek-->
+<!--                    <th rowspan="2">Rebríček</th>-->
+                    <th colspan="6" class="border-left-thick">Zápasy Dvojhra (Singles)</th>
+                    <th colspan="3" class="border-left-thick">Zápasy Štvorhra (Doubles)</th>
+                    <th rowspan="2" class="border-left-thick">Naj Výhra</th>
+                    <th rowspan="2">Naposledy Hral</th>
+                    <th rowspan="2">Max Rating</th>
+                    <th rowspan="2">Min Rating</th>
+                </tr>
+                <tr>
+                    <th class="sub-singles border-left-thick">Zápasy</th><th class="sub-singles">Výhry</th><th class="sub-singles">Prehry</th><th class="sub-singles">Sety</th><th class="sub-singles">Úspešnosť Zápasy</th><th class="sub-singles">Úspešnosť Sety</th>
+                    <th class="sub-doubles border-left-thick">Zápasy</th><th class="sub-doubles">Výhry</th><th class="sub-doubles">Prehry</th>
+                </tr>
+                </thead>
+                <tbody id="mainTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="playerModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closePlayerModal()">&times;</span>
+            <div id="selectedPlayerHeader"><div class="player-header-name" id="headerName"></div><div class="player-header-team" id="headerTeam"></div><div class="player-header-logo" id="headerTeamLogoWrapper"><img id="headerTeamLogo" alt="Team logo"></div></div>
+            <div id="chartContainerWrapper">
+                <canvas id="ratingChart"></canvas>
+            </div>
+            <div id="formHistoryWrapper">
+                <div class="form-history-title">Forma (všetky zápasy, posledné novšie vpravo)</div>
+                <div id="formHistory" class="form-history"></div>
+            </div>
+            <div id="compareSection">
+                <h3>Porovnať</h3>
+                <form id="compareForm" class="compare-form-row">
+                    <input id="compareInput" class="compare-input" type="text" list="comparePlayerList" placeholder="Začnite písať meno hráča..." autocomplete="off">
+                    <button type="submit" class="compare-btn">Porovnať</button>
+                    <button type="button" id="clearCompareBtn" class="compare-btn compare-clear">Vymazať</button>
+                </form>
+                <div id="compareStatus" class="compare-status"></div>
+                <div class="compare-matches">
+                    <div class="compare-matches-title">Vzájomné zápasy</div>
+                    <div id="compareMatchesList"></div>
+                </div>
+                <datalist id="comparePlayerList"></datalist>
+            </div>
+            <div id="derivedStatsSection">
+                <div class="derived-stats-grid">
+                    <div class="stats-list" id="derivedStatsList"></div>
+                    <div class="stats-radar">
+                        <canvas id="statsRadarChart"></canvas>
+                    </div>
+                </div>
+                <div id="statsDescription" class="stats-description"></div>
+                <div id="statsDisclaimer" class="stats-disclaimer"></div>
+            </div>
+            <div class="pie-row-title"><span>Prehľad</span></div>
+            <div id="generalStatsWrapper">
+                <div class="stat-card border-blue"><div class="stat-label">Aktuálny Rating</div><div id="currentRatingVal" class="stat-value"></div></div>
+                <div class="stat-card border-blue"><div class="stat-label">Priemerný Rating Súpera</div><div id="avgOpponentVal" class="stat-value"></div><div class="stat-rating" style="font-size:0.75em">(Iba dvojhry)</div></div>
+            </div>
+            <div class="pie-row-title"><span>Highlighty</span></div>
+            <div id="statsHighlightsWrapper">
+                <div class="stat-card border-green"><div class="stat-label">Najlepšia Výhra</div><div id="bestWinContainer"><div class="stat-value" id="bestWinName"></div><div class="stat-rating" id="bestWinRating"></div></div></div>
+                <div class="stat-card border-red"><div class="stat-label">Najhoršia Prehra</div><div id="worstLossContainer"><div class="stat-value" id="worstLossName"></div><div class="stat-rating" id="worstLossRating"></div></div></div>
+            </div>
+            <div class="pie-row-title"><span>Štatistiky Dvojhry</span></div>
+            <div class="pie-row-wrapper">
+                <div class="pie-card"><div class="pie-header"><div class="pie-title">Zápasy (Dvojhra)</div><div class="pie-total-val" id="matchesTotalVal">0</div></div><div class="pie-canvas-holder"><canvas id="matchesChart"></canvas></div><div class="custom-legend"><div class="legend-row"><span class="legend-label">Výhry</span><div><span class="legend-val val-green" id="matchesWinsVal">0</span><span class="pct-text" id="matchesWinsPct">(0%)</span></div></div><div class="legend-row"><span class="legend-label">Prehry</span><div><span class="legend-val val-red" id="matchesLossVal">0</span><span class="pct-text" id="matchesLossPct">(0%)</span></div></div></div></div>
+                <div class="pie-card"><div class="pie-header"><div class="pie-title">Sety (Dvojhra)</div><div class="pie-total-val" id="setsTotalVal">0</div></div><div class="pie-canvas-holder"><canvas id="setsChart"></canvas></div><div class="custom-legend"><div class="legend-row"><span class="legend-label">Výhry</span><div><span class="legend-val val-green" id="setsWinsVal">0</span><span class="pct-text" id="setsWinsPct">(0%)</span></div></div><div class="legend-row"><span class="legend-label">Prehry</span><div><span class="legend-val val-red" id="setsLossVal">0</span><span class="pct-text" id="setsLossPct">(0%)</span></div></div></div></div>
+            </div>
+            <div class="pie-row-title"><span>Štatistiky Štvorhry</span></div>
+            <div class="pie-row-wrapper">
+                <div class="pie-card"><div class="pie-header"><div class="pie-title">Zápasy (Štvorhra)</div><div class="pie-total-val" id="dMatchesTotalVal">0</div></div><div class="pie-canvas-holder"><canvas id="dMatchesChart"></canvas></div><div class="custom-legend"><div class="legend-row"><span class="legend-label">Výhry</span><div><span class="legend-val val-green" id="dMatchesWinsVal">0</span><span class="pct-text" id="dMatchesWinsPct">(0%)</span></div></div><div class="legend-row"><span class="legend-label">Prehry</span><div><span class="legend-val val-red" id="dMatchesLossVal">0</span><span class="pct-text" id="dMatchesLossPct">(0%)</span></div></div></div></div>
+                <div class="pie-card"><div class="pie-header"><div class="pie-title">Sety (Štvorhra)</div><div class="pie-total-val" id="dSetsTotalVal">0</div></div><div class="pie-canvas-holder"><canvas id="dSetsChart"></canvas></div><div class="custom-legend"><div class="legend-row"><span class="legend-label">Výhry</span><div><span class="legend-val val-green" id="dSetsWinsVal">0</span><span class="pct-text" id="dSetsWinsPct">(0%)</span></div></div><div class="legend-row"><span class="legend-label">Prehry</span><div><span class="legend-val val-red" id="dSetsLossVal">0</span><span class="pct-text" id="dSetsLossPct">(0%)</span></div></div></div></div>
+            </div>
+            <div id="historyContainer"></div>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeInfoModal()">&times;</span>
+            <div class="info-content">
+                <div class="info-title">Ako funguje Rating?</div>
+
+                <div class="info-section" style="background-color: var(--color-info-soft); padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+                    <b>💡 Tip:</b> Kliknutím na meno hráča v tabuľke zobrazíte jeho <b>detailný profil</b> – grafy vývoja ratingu, koláčové grafy úspešnosti a kompletnú históriu zápasov.
+                </div>
+
+                <div class="info-section">
+                    <p class="info-text">
+                        Ratingový systém v Košickej Minilige je založený na modifikovanom <b>ELO systéme</b> (podobnom ako v šachu), ktorý je prispôsobený pre stolný tenis. Cieľom je spravodlivo ohodnotiť aktuálnu výkonnosť hráčov.
+                    </p>
+                    <ul class="info-list">
+                        <li><b>Všetci začínajú na 100:</b> Každý nový hráč vstupuje do systému so základným ratingom 100.</li>
+                        <li><b>Počítajú sa sety, nielen výhry:</b> Systém nepozerá len na to, či ste vyhrali zápas, ale <b>koľko setov</b> ste uhrali. Výhra 3:0 vám pridá viac bodov (a súperovi viac vezme) ako výhra 3:2.</li>
+                        <li><b>Sila súpera rozhoduje:</b> Ak porazíte hráča s vyšším ratingom, získate viac bodov. Ak prehráte s výrazne silnejším hráčom, stratíte len málo bodov (systém to očakával).</li>
+                        <li><b>Aj prehra môže znamenať zisk:</b> Ak máte výrazne nižší rating ako súper, ale uhráte proti nemu 1 alebo 2 sety, môžete si polepšiť (získať body) aj napriek tomu, že ste zápas celkovo prehrali.</li>
+                        <li><b>Stabilita (K-Faktor):</b> Prvých 5 zápasov sa váš rating mení rýchlejšie, aby sa čo najskôr našla vaša "skutočná" úroveň. Po odohratí viac ako 5 zápasov sa rating stabilizuje.</li>
+                    </ul>
+                </div>
+
+                <div class="info-title" style="margin-top: 25px;">Farebná legenda (Stabilita)</div>
+                <div class="info-section">
+                    <p class="info-text">Farba ratingu v tabuľke naznačuje štatistickú presnosť údajov:</p>
+                    <ul class="info-list">
+                        <li><b style="color: var(--color-danger);">Červená (0-10 zápasov):</b> <b>Nováčik / Dočasný.</b> Hráč odohral málo zápasov, hodnota sa môže rýchlo meniť a nemusí plne odrážať jeho úroveň.</li>
+                        <li><b style="color: var(--color-warning);">Oranžová (11-20 zápasov):</b> <b>Rozvíjajúci sa.</b> Presnosť ratingu sa zvyšuje.</li>
+                        <li><b style="color: var(--color-success);">Zelená (21+ zápasov):</b> <b>Stabilný.</b> Hráč odohral dostatok zápasov, rating je štatisticky presný.</li>
+                    </ul>
+                </div>
+
+                <div class="info-title" style="margin-top: 25px;">Matematický Vzorec</div>
+                <div class="info-section">
+                    <p class="info-text">
+                        Systém najprv vypočíta <b>Očakávaný počet setov</b>, ktoré by ste mali uhrať vzhľadom na rozdiel ratingov. Potom porovná tento odhad s realitou.
+                    </p>
+
+                    <div class="formula-box">
+                        Nový Rating = <span class="math-var">R_old</span> + <span class="math-var">K</span> × (<span class="math-var">Sety_skutočné</span> - <span class="math-var">Sety_očakávané</span>)
+                    </div>
+
+                    <p class="info-text">Kde:</p>
+                    <ul class="info-list" style="font-size: 0.9em;">
+                        <li><span class="math-var">R_old</span>: Váš aktuálny rating pred zápasom.</li>
+                        <li><span class="math-var">K</span>: Váhový faktor (30 pre nováčikov, klesá na 10 pre stabilných hráčov).</li>
+                        <li><span class="math-var">Sety_očakávané</span>: Vypočítané podľa vzorca: <br>
+                            \( E_a = \frac{PočetSetov}{1 + 10^{(R_b - R_a) / 300}} \)
+                        </li>
+                        <li>(Deliteľ 300 určuje citlivosť systému na rozdiely v ratingu).</li>
+                    </ul>
+
+                    <p class="info-text" style="margin-top:15px; font-style: italic; font-size: 0.9em; color:var(--color-muted);">
+                        * Pre štvorhry (Doubles) sa berie do úvahy priemerný rating a priemerný K-faktor dvojice. Získané body sa následne delia medzi oboch hráčov.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3 class="footer-title">Košická Miniliga</h3>
+                <p class="footer-description">Výsledky, tabuľky a ratingy hráčov pre Košickú stolnotenisovú Miniligu. Nezávislý projekt.</p>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Navigácia</h4>
+                <nav class="footer-nav">
+                    <a href="index.html" class="footer-link">Domov</a>
+                    <a href="results.html" class="footer-link">Výsledky</a>
+                    <a href="rating.html" class="footer-link">Rating</a>
+                    <a href="table.html" class="footer-link">Tabuľka</a>
+                    <a href="prediction.html" class="footer-link">Predikcie</a>
+                </nav>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">O stránke</h4>
+                <p class="footer-text">Stolný tenis v Košiciach</p>
+                <p class="footer-text">Systém ratingov založený na ELO</p>
+                <p class="footer-text">Kontakty: <a href="mailto:info@miniliga.sk">info@miniliga.sk</a></p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copyright">&copy; <span id="currentYear"></span> miniliga.sk. Nezávislý projekt pre zobrazenie výsledkov Košickej Miniligy.</p>
+        </div>
+    </footer>
+</div>
+
+<script src="googleSheetsLoader.js?v=2"></script>
+<script src="matchData.js?v=7"></script>
+<script src="script.js?v=10"></script>
+</body>
+</html>

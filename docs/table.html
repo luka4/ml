@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RP5HV7SX60"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-RP5HV7SX60');
+    </script>
+    <title>Košická Miniliga - Tabuľka</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/loader2.css">
+    <link rel="stylesheet" href="styles/shared.css">
+    <link rel="stylesheet" href="styles/table.css">
+    <link rel="canonical" href="https://miniliga.sk/table.html" />
+</head>
+<body id="page-table" class="loading">
+<div id="pageLoader">
+    <div class="loader">
+        <div class="scene">
+            <div class="table"></div>
+            <div class="net"></div>
+            <div class="racket left"></div>
+            <div class="racket right"></div>
+            <div class="ball"></div>
+        </div>
+        <div class="loading-text">Načítava sa</div>
+    </div>
+</div>
+
+<div id="pageContent">
+    <div id="mainNavContainer"></div>
+    <div class="container" id="mainContainer">
+        <h2>Tabuľka Ligy</h2>
+        <div id="tablesContainer"></div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3 class="footer-title">Košická Miniliga</h3>
+                <p class="footer-description">Výsledky, tabuľky a ratingy hráčov pre Košickú stolnotenisovú Miniligu. Nezávislý projekt.</p>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Navigácia</h4>
+                <nav class="footer-nav">
+                    <a href="index.html" class="footer-link">Domov</a>
+                    <a href="results.html" class="footer-link">Výsledky</a>
+                    <a href="rating.html" class="footer-link">Rating</a>
+                    <a href="table.html" class="footer-link">Tabuľka</a>
+                    <a href="prediction.html" class="footer-link">Predikcie</a>
+                </nav>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">O stránke</h4>
+                <p class="footer-text">Stolný tenis v Košiciach</p>
+                <p class="footer-text">Systém ratingov založený na ELO</p>
+                <p class="footer-text">Kontakty: <a href="mailto:info@miniliga.sk">info@miniliga.sk</a></p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copyright">&copy; <span id="currentYear"></span> miniliga.sk. Nezávislý projekt pre zobrazenie výsledkov Košickej Miniligy.</p>
+        </div>
+    </footer>
+</div>
+
+<script src="googleSheetsLoader.js?v=2"></script>
+<script src="matchData.js?v=7"></script>
+<script src="script.js?v=10"></script>
+</body>
+</html>

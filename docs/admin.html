@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RP5HV7SX60"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-RP5HV7SX60');
+    </script>
+    <title>Košická Miniliga - Admin</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/loader3.css">
+    <link rel="stylesheet" href="styles/shared.css">
+    <style>
+        .admin-container { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
+        .admin-card { background: var(--color-surface); border-radius: var(--radius-md); padding: 2rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); }
+        .admin-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--color-text); }
+        .password-form { display: flex; flex-direction: column; gap: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+        .form-label { font-weight: 500; color: var(--color-text-subtle); }
+        .form-input { padding: 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-size: 1rem; background: var(--color-surface); color: var(--color-text); width: 100%; box-sizing: border-box; }
+        .form-input:focus { outline: none; border-color: var(--color-accent); }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius-sm); font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--color-primary); color: var(--color-text-inverse); }
+        .btn-secondary { background: var(--color-border); color: var(--color-text); }
+        .btn-danger { background: var(--color-danger); color: var(--color-text-inverse); }
+        .status-text { margin-top: 1rem; padding: 0.75rem; border-radius: var(--radius-sm); display: none; }
+        .status-text.success { background: var(--color-success-soft); color: var(--color-success); display: block; }
+        .status-text.error { background: #fee2e2; color: var(--color-danger); display: block; }
+        .player-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; padding: 0.5rem; background: var(--color-surface-2); border-radius: var(--radius-sm); }
+        .player-item input { flex: 1; }
+        .button-group { display: flex; gap: 1rem; margin-top: 1rem; }
+        .tournament-header { display: flex; gap: 10px; align-items: flex-end; }
+        .btn-remove { padding: 0.5rem; width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center; }
+        .btn-remove svg { width: 1.2rem; height: 1.2rem; fill: currentColor; }
+        .seed-section { display: none; margin-top: 2rem; }
+        .seed-table { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem; }
+        .seed-column { display: flex; flex-direction: column; }
+        .seed-column-title { font-weight: 600; margin-bottom: 1rem; color: var(--color-text); }
+        .player-list { max-height: 400px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 0.5rem; background: var(--color-surface-2); }
+        .player-list-item { padding: 0.5rem; margin-bottom: 0.25rem; border-radius: var(--radius-sm); background: var(--color-surface); display: flex; justify-content: space-between; align-items: center; }
+        .player-list-item.no-rating { color: #2563eb; }
+        .player-rating { font-weight: 600; color: var(--color-text-subtle); }
+        .seed-form { display: flex; flex-direction: column; gap: 1rem; }
+        .checkbox-group { display: flex; align-items: center; gap: 0.5rem; }
+        .checkbox-group input[type="checkbox"] { width: 1.2rem; height: 1.2rem; cursor: pointer; }
+        .schedule-container { margin-top: 2rem; padding: 1.5rem; background: var(--color-surface-2); border-radius: var(--radius-md); }
+        .schedule-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: var(--color-text); }
+        .round-section { margin-bottom: 2rem; }
+        .round-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--color-text); }
+        .group-section { margin-bottom: 1.5rem; padding: 1rem; background: var(--color-surface); border-radius: var(--radius-sm); }
+        .group-title { font-weight: 600; margin-bottom: 0.5rem; color: var(--color-text); }
+        .group-players { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .group-player { padding: 0.25rem 0.5rem; background: var(--color-surface-2); border-radius: var(--radius-sm); font-size: 0.9rem; }
+        .ko-bracket { display: flex; flex-direction: column; gap: 1rem; }
+        .ko-match { padding: 0.75rem; background: var(--color-surface); border-radius: var(--radius-sm); border-left: 3px solid var(--color-accent); }
+        .ko-match-title { font-weight: 600; margin-bottom: 0.5rem; color: var(--color-text); }
+        .sim-scenario { padding: 1rem; background: var(--color-surface); border-radius: var(--radius-sm); border-left: 3px solid var(--color-border); }
+        .sim-scenario.win { border-left-color: var(--color-success); }
+        .sim-scenario.loss { border-left-color: var(--color-danger); }
+        .sim-scenario-score { font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .sim-scenario-delta { font-size: 1.2rem; font-weight: 600; }
+        .sim-scenario-delta.positive { color: var(--color-success); }
+        .sim-scenario-delta.negative { color: var(--color-danger); }
+        .sim-scenario-new-rating { margin-top: 0.5rem; font-size: 0.9rem; color: var(--color-text-subtle); }
+        .prediction-row { display: flex; align-items: center; gap: 1rem; padding: 0.5rem; background: var(--color-surface-2); border-radius: var(--radius-sm); }
+        .prediction-score { font-weight: 600; min-width: 50px; }
+        .prediction-bar-container { flex: 1; height: 20px; background: var(--color-border); border-radius: var(--radius-sm); overflow: hidden; }
+        .prediction-bar-fill { height: 100%; background: var(--color-primary); transition: width 0.3s; }
+        .prediction-pct { min-width: 60px; text-align: right; font-size: 0.9rem; color: var(--color-text-subtle); }
+    </style>
+</head>
+<body id="page-admin" class="loading">
+
+<div id="pageLoader">
+    <div class="loader">
+        <div class="spinner">
+            <svg class="raquet" id="r-1"><ellipse class="front" cx="44" cy="50" rx="35" ry="50" /><ellipse class="middle" cx="42" cy="50" rx="35" ry="50" /><ellipse class="back" cx="40" cy="50" rx="35" ry="50" /><rect class="handle outer" x="40" y="100" width="10" height="42" /><rect class="handle inner" x="38" y="100" width="10" height="41" /><rect class="handle outer" x="35" y="100" width="10" height="40" /><ellipse class="shadow" id="sor-1" cx="40" cy="50" rx="7" ry="10" /></svg>
+            <svg class="raquet" id="r-2"><ellipse class="back" cx="40" cy="50" rx="35" ry="50" /><ellipse class="middle" cx="42" cy="50" rx="35" ry="50" /><ellipse class="front" cx="44" cy="50" rx="35" ry="50" /><rect class="handle outer" x="35" y="100" width="10" height="42" /><rect class="handle inner" x="37" y="100" width="10" height="41" /><rect class="handle outer" x="40" y="100" width="10" height="40" /><ellipse class="shadow" id="sor-2" cx="44" cy="50" rx="7" ry="10" /></svg>
+            <div class="ball-container"><svg class="ball"><circle cx="20" cy="20" r="12" /></svg></div>
+            <svg class="shadow"><ellipse id="sr-1" cx="70" cy="30" rx="50" ry="15"/><ellipse id="sb" cx="150" cy="30" rx="15" ry="4.5"/><ellipse id="sr-2" cx="230" cy="30" rx="50" ry="15"/></svg>
+        </div>
+        <div class="loading-text">Načítava sa</div>
+    </div>
+</div>
+
+<div id="pageContent">
+    <div id="mainNavContainer"></div>
+
+    <div class="container admin-container">
+        <div id="passwordFormSection" class="admin-card" style="display: none;">
+            <h2 class="admin-title">🔐 Admin Prihlásenie</h2>
+            <form id="passwordForm" class="password-form">
+                <div class="form-group">
+                    <label for="passField" class="form-label">Heslo (číselné):</label>
+                    <input type="number" id="passField" class="form-input" required autocomplete="off">
+                </div>
+                <button type="submit" class="btn btn-primary">Potvrdiť</button>
+                <div id="passwordStatus" class="status-text"></div>
+            </form>
+        </div>
+
+        <div id="adminDashboard" style="display: none;">
+            <div class="admin-card">
+                <h2 class="admin-title">🏆 Konfigurácia Turnaja</h2>
+                <form id="tournamentForm">
+                    <div class="form-group">
+                        <label class="form-label">Názov turnaja (Jedinečný ID):</label>
+                        <div class="tournament-header">
+                            <input type="text" id="tournamentTitle" class="form-input" placeholder="napr. Turnaj_2026_01" required>
+                            <button type="button" id="loadTournamentBtn" class="btn btn-secondary">Načítať</button>
+                        </div>
+                    </div>
+
+                    <div id="playersContainer"></div>
+
+                    <div class="button-group">
+                        <button type="button" id="addPlayerBtn" class="btn btn-secondary">Pridať hráča</button>
+                        <button type="button" id="addNewPlayerBtn" class="btn btn-secondary">Pridať nového hráča</button>
+                    </div>
+
+                    <div style="margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Uložiť a prepísať v tabuľke</button>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <button type="button" id="startSeedBtn" class="btn btn-secondary" style="width: 100%;">Start Seed</button>
+                    </div>
+
+                    <div id="submitStatus" class="status-text"></div>
+                </form>
+
+                <div id="seedSection" class="admin-card seed-section">
+                    <h2 class="admin-title">🌱 Seed Turnaja</h2>
+                    <div class="seed-table">
+                        <div class="seed-column">
+                            <div class="seed-column-title">Hráči (zoradení podľa ratingu)</div>
+                            <div id="playersListContainer" class="player-list"></div>
+                        </div>
+                        <div class="seed-column">
+                            <div class="seed-column-title">Konfigurácia Seedu</div>
+                            <form id="seedForm" class="seed-form">
+                                <div class="form-group">
+                                    <label class="form-label">Round 1 Min počet hráčov v skupine:</label>
+                                    <input type="number" id="round1MinPlayers" class="form-input" min="2" value="4" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Round 1 Max postupujúcich:</label>
+                                    <input type="number" id="round1MaxAdvance" class="form-input" min="1" value="2" required>
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="checkbox" id="round2IsKO" checked>
+                                    <label for="round2IsKO" class="form-label">Round 2 je KO?</label>
+                                </div>
+                                <div class="form-group" id="round2MinPlayersGroup" style="display: none;">
+                                    <label class="form-label">Round 2 Min počet hráčov v skupine:</label>
+                                    <input type="number" id="round2MinPlayers" class="form-input" min="2" value="4">
+                                </div>
+                                <div class="form-group checkbox-group">
+                                    <input type="checkbox" id="playSecondFinal">
+                                    <label for="playSecondFinal" class="form-label">Hrať druhý finále</label>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Vytvoriť Seed</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div id="scheduleContainer" class="schedule-container" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="admin-card" style="margin-top: 1.5rem;">
+                <h2 class="admin-title">⚙️ Nastavenia</h2>
+                <form id="settingsForm">
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="showOldSeasons" name="showOldSeasons">
+                        <label for="showOldSeasons" class="form-label">Zobraziť staré sezóny (jar2024_5kolo+)</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Uložiť nastavenia</button>
+                    <div id="settingsStatus" class="status-text"></div>
+                </form>
+            </div>
+            <div class="admin-card" style="margin-top: 1.5rem;">
+                <h2 class="admin-title">🎯 Simulácia Ratingu</h2>
+                <form id="ratingSimForm">
+                    <div class="form-group">
+                        <label for="ratingA" class="form-label">Rating A:</label>
+                        <input type="number" id="ratingA" class="form-input" step="any" placeholder="Zadajte rating hráča A" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ratingB" class="form-label">Rating B:</label>
+                        <input type="number" id="ratingB" class="form-input" step="any" placeholder="Zadajte rating hráča B" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Zobraziť simuláciu</button>
+                </form>
+                <div id="ratingSimResult" style="display: none; margin-top: 2rem;">
+                    <!-- Player Info Cards -->
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; padding: 1rem; background: var(--color-surface-2); border-radius: var(--radius-sm);">
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;" id="simPlayerAName">Player A</div>
+                            <div style="color: var(--color-text-subtle); font-size: 0.9rem;">Rating: <span id="simRatingA">-</span></div>
+                            <div style="color: var(--color-text-subtle); font-size: 0.9rem;">K-faktor: <span id="simKFactorA">-</span></div>
+                        </div>
+                        <div style="font-weight: 600; color: var(--color-text-subtle);">VS</div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-weight: 600; margin-bottom: 0.5rem;" id="simPlayerBName">Player B</div>
+                            <div style="color: var(--color-text-subtle); font-size: 0.9rem;">Rating: <span id="simRatingB">-</span></div>
+                            <div style="color: var(--color-text-subtle); font-size: 0.9rem;">K-faktor: <span id="simKFactorB">-</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Prediction probabilities -->
+                    <div style="margin-bottom: 2rem;">
+                        <div style="font-weight: 600; margin-bottom: 1rem; font-size: 1.1rem;">📊 Pravdepodobnosť výsledkov</div>
+                        <div id="simPredictionList" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                    </div>
+                    
+                    <!-- Rating simulation -->
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 1rem; font-size: 1.1rem;">🎯 Simulácia zmeny ratingu</div>
+                        <div id="simRatingGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;"></div>
+                    </div>
+                </div>
+            </div>
+            <button id="logoutBtn" class="btn btn-secondary" style="margin-top: 1rem;">Odhlásiť sa</button>
+        </div>
+    </div>
+</div>
+
+<script src="googleSheetsLoader.js?v=2"></script>
+<script src="matchData.js?v=7"></script>
+<script src="script.js?v=10"></script>
+<script>
+    (function() {
+        const ADMIN_PASSWORD_KEY = 'adminPassword';
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyJkdpYMvy2LgoOZuAbVMmRKpuvyKQpBkNZZKcDmieVqgRKh5Pvtwyjreg7I9cVazHkog/exec'; // 👈 REPLACE WITH YOUR URL
+
+        const DOM = {
+            passSection: document.getElementById('passwordFormSection'),
+            dashboard: document.getElementById('adminDashboard'),
+            passForm: document.getElementById('passwordForm'),
+            passInput: document.getElementById('passField'),
+            tournamentForm: document.getElementById('tournamentForm'),
+            titleInput: document.getElementById('tournamentTitle'),
+            loadBtn: document.getElementById('loadTournamentBtn'),
+            playerContainer: document.getElementById('playersContainer'),
+            submitStatus: document.getElementById('submitStatus'),
+            logout: document.getElementById('logoutBtn'),
+            startSeedBtn: document.getElementById('startSeedBtn'),
+            seedSection: document.getElementById('seedSection'),
+            playersListContainer: document.getElementById('playersListContainer'),
+            seedForm: document.getElementById('seedForm'),
+            round2IsKO: document.getElementById('round2IsKO'),
+            round2MinPlayersGroup: document.getElementById('round2MinPlayersGroup'),
+            scheduleContainer: document.getElementById('scheduleContainer'),
+            settingsForm: document.getElementById('settingsForm'),
+            showOldSeasons: document.getElementById('showOldSeasons'),
+            settingsStatus: document.getElementById('settingsStatus'),
+            ratingSimForm: document.getElementById('ratingSimForm'),
+            ratingSimResult: document.getElementById('ratingSimResult')
+        };
+
+        let allPlayers = [];
+        let playerCounter = 0;
+        let playersData = {}; // Store full player data with ratings
+
+        // --- UTILS ---
+        function showStatus(el, msg, type) {
+            el.textContent = msg;
+            el.className = `status-text ${type}`;
+            el.style.display = 'block';
+            if (type === 'success') setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        function addPlayerRow(name = "") {
+            playerCounter++;
+            const id = `p_${playerCounter}`;
+            const row = document.createElement('div');
+            row.className = 'player-item';
+            row.innerHTML = `
+            <input type="text" class="form-input" list="playersList" value="${name}" placeholder="Meno hráča..." required>
+            <datalist id="playersList">
+                ${allPlayers.map(p => `<option value="${p.name}">`).join('')}
+            </datalist>
+            <button type="button" class="btn btn-danger btn-remove" title="Odstrániť">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+            </button>
+        `;
+            row.querySelector('.btn-remove').onclick = () => row.remove();
+            DOM.playerContainer.appendChild(row);
+        }
+
+        // --- AUTH ---
+        function checkAuth() {
+            const pass = localStorage.getItem(ADMIN_PASSWORD_KEY);
+            DOM.passSection.style.display = pass ? 'none' : 'block';
+            DOM.dashboard.style.display = pass ? 'block' : 'none';
+        }
+
+        DOM.passForm.onsubmit = (e) => {
+            e.preventDefault();
+            localStorage.setItem(ADMIN_PASSWORD_KEY, DOM.passInput.value.trim());
+            checkAuth();
+        };
+
+        DOM.logout.onclick = () => {
+            localStorage.removeItem(ADMIN_PASSWORD_KEY);
+            location.reload();
+        };
+
+        // --- DATA LOADING (GET) ---
+        DOM.loadBtn.onclick = async () => {
+            const title = DOM.titleInput.value.trim();
+            if (!title) return alert("Zadajte názov turnaja");
+
+            DOM.loadBtn.textContent = "Načítavam...";
+            try {
+                const resp = await fetch(`${WEB_APP_URL}?tournamentName=${encodeURIComponent(title)}`);
+                const data = await resp.json();
+
+                DOM.playerContainer.innerHTML = '';
+                if (data.status === 'success' && data.players.length > 0) {
+                    data.players.forEach(name => addPlayerRow(name));
+                    showStatus(DOM.submitStatus, `Načítaných ${data.players.length} hráčov z tabuľky.`, 'success');
+                } else {
+                    showStatus(DOM.submitStatus, "Žiadne dáta pre tento turnaj. Začnite pridávať.", 'success');
+                }
+            } catch (err) {
+                showStatus(DOM.submitStatus, "Chyba pri načítaní: " + err.message, 'error');
+            } finally {
+                DOM.loadBtn.textContent = "Načítať";
+            }
+        };
+
+        // --- SUBMIT (POST + VERIFY) ---
+        DOM.tournamentForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const players = Array.from(DOM.playerContainer.querySelectorAll('input')).map(i => i.value.trim()).filter(v => v);
+
+            if (players.length === 0) return showStatus(DOM.submitStatus, "Pridajte aspoň jedného hráča", "error");
+
+            const payload = {
+                password: localStorage.getItem(ADMIN_PASSWORD_KEY),
+                tournamentName: DOM.titleInput.value.trim(),
+                players: players
+            };
+
+            try {
+                showStatus(DOM.submitStatus, "Odosiela sa požiadavka na prepis...", "success");
+
+                // Step 1: Blind POST
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                });
+
+                // Step 2: Verification GET after a short delay
+                setTimeout(async () => {
+                    const check = await fetch(`${WEB_APP_URL}?tournamentName=${encodeURIComponent(payload.tournamentName)}`);
+                    const result = await check.json();
+
+                    if (result.status === 'success' && result.players.length === players.length) {
+                        showStatus(DOM.submitStatus, "✅ Úspešne uložené a overené v tabuľke!", "success");
+                    } else {
+                        showStatus(DOM.submitStatus, "⚠️ Odoslané, ale overenie zlyhalo. Skontrolujte tabuľku.", "error");
+                    }
+                }, 2000);
+
+            } catch (err) {
+                showStatus(DOM.submitStatus, "Chyba siete: " + err.message, "error");
+            }
+        };
+
+        // --- SEEDING ---
+        function getPlayersWithRatings() {
+            const playerNames = Array.from(DOM.playerContainer.querySelectorAll('input'))
+                .map(i => i.value.trim())
+                .filter(v => v);
+            
+            const playersWithRatings = playerNames.map(name => {
+                const player = playersData[name] || { name, rating: 100 };
+                return {
+                    name: player.name,
+                    rating: player.rating || 100,
+                    hasRating: player.rating && player.rating !== 100
+                };
+            });
+            
+            return playersWithRatings.sort((a, b) => b.rating - a.rating);
+        }
+
+        function renderPlayersList() {
+            const players = getPlayersWithRatings();
+            DOM.playersListContainer.innerHTML = '';
+            
+            players.forEach(player => {
+                const item = document.createElement('div');
+                item.className = `player-list-item ${!player.hasRating ? 'no-rating' : ''}`;
+                item.innerHTML = `
+                    <span>${escapeHtmlSafe(player.name)}</span>
+                    <span class="player-rating">${player.rating.toFixed(0)}</span>
+                `;
+                DOM.playersListContainer.appendChild(item);
+            });
+        }
+
+        function seedPlayers(players, round1MinPlayers, round1MaxAdvance, round2IsKO, round2MinPlayers, playSecondFinal) {
+            const groups = [];
+            const numPlayers = players.length;
+            
+            // Calculate number of groups for Round 1
+            let numGroups = Math.ceil(numPlayers / round1MinPlayers);
+            const playersPerGroup = Math.floor(numPlayers / numGroups);
+            const remainder = numPlayers % numGroups;
+            
+            // Initialize groups
+            for (let g = 0; g < numGroups; g++) {
+                groups.push([]);
+            }
+            
+            // Snake seeding: distribute players across groups
+            // Pattern: 1->2->3->...->N, then N->N-1->...->1, then 1->2->... (repeat)
+            let playerIndex = 0;
+            let forward = true;
+            
+            while (playerIndex < numPlayers) {
+                if (forward) {
+                    // Forward: Group 0, 1, 2, ..., N-1
+                    for (let g = 0; g < numGroups && playerIndex < numPlayers; g++) {
+                        const groupSize = playersPerGroup + (g < remainder ? 1 : 0);
+                        if (groups[g].length < groupSize) {
+                            groups[g].push(players[playerIndex]);
+                            playerIndex++;
+                        }
+                    }
+                } else {
+                    // Backward: Group N-1, N-2, ..., 0
+                    for (let g = numGroups - 1; g >= 0 && playerIndex < numPlayers; g--) {
+                        const groupSize = playersPerGroup + (g < remainder ? 1 : 0);
+                        if (groups[g].length < groupSize) {
+                            groups[g].push(players[playerIndex]);
+                            playerIndex++;
+                        }
+                    }
+                }
+                forward = !forward;
+            }
+            
+            // Calculate advancing players
+            const advancingPlayers = [];
+            groups.forEach((group, idx) => {
+                const advanceCount = Math.min(round1MaxAdvance, group.length);
+                advancingPlayers.push(...group.slice(0, advanceCount));
+            });
+            
+            // Round 2
+            let round2Groups = [];
+            let koBracket = [];
+            
+            if (round2IsKO) {
+                // KO bracket - create single elimination with proper tournament seeding
+                const numAdvancing = advancingPlayers.length;
+                
+                // Calculate bracket size (next power of 2)
+                const bracketSize = Math.pow(2, Math.ceil(Math.log2(numAdvancing)));
+                
+                // Standard tournament bracket seeding: recursive placement
+                // For bracket of 8: [1, 8, 4, 5, 3, 6, 2, 7]
+                function generateBracketSeeds(size) {
+                    if (size === 1) return [1];
+                    const half = size / 2;
+                    const firstHalf = generateBracketSeeds(half);
+                    const secondHalf = firstHalf.map(s => size + 1 - s);
+                    const result = [];
+                    for (let i = 0; i < half; i++) {
+                        result.push(firstHalf[i]);
+                        result.push(secondHalf[i]);
+                    }
+                    return result;
+                }
+                
+                const bracketSeeds = generateBracketSeeds(bracketSize);
+                
+                // Place players according to bracket seeds
+                const bracketPositions = new Array(bracketSize).fill(null);
+                for (let i = 0; i < bracketSize; i++) {
+                    const seed = bracketSeeds[i];
+                    if (seed <= numAdvancing) {
+                        bracketPositions[i] = advancingPlayers[seed - 1];
+                    }
+                }
+                
+                // Create first round matches (pair adjacent positions)
+                for (let i = 0; i < bracketSize; i += 2) {
+                    const player1 = bracketPositions[i];
+                    const player2 = bracketPositions[i + 1];
+                    
+                    if (player1 || player2) {
+                        koBracket.push({
+                            player1: player1 ? player1.name : 'BYE',
+                            player2: player2 ? player2.name : 'BYE'
+                        });
+                    }
+                }
+            } else {
+                // Round 2 groups
+                const numRound2Groups = Math.ceil(advancingPlayers.length / round2MinPlayers);
+                const playersPerRound2Group = Math.floor(advancingPlayers.length / numRound2Groups);
+                const remainderRound2 = advancingPlayers.length % numRound2Groups;
+                
+                let idx = 0;
+                for (let g = 0; g < numRound2Groups; g++) {
+                    const groupSize = playersPerRound2Group + (g < remainderRound2 ? 1 : 0);
+                    const group = [];
+                    for (let i = 0; i < groupSize; i++) {
+                        if (idx < advancingPlayers.length) {
+                            group.push(advancingPlayers[idx]);
+                            idx++;
+                        }
+                    }
+                    round2Groups.push(group);
+                }
+            }
+            
+            return {
+                round1Groups: groups,
+                round2Groups: round2Groups,
+                koBracket: koBracket,
+                playSecondFinal: playSecondFinal
+            };
+        }
+
+        function escapeHtmlSafe(str) {
+            if (typeof escapeHtml === 'function') {
+                return escapeHtml(str);
+            }
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderSchedule(schedule) {
+            let html = '<div class="schedule-title">📅 Harmonogram Turnaja</div>';
+            
+            // Round 1
+            html += '<div class="round-section">';
+            html += '<div class="round-title">Round 1 - Skupiny</div>';
+            schedule.round1Groups.forEach((group, idx) => {
+                html += '<div class="group-section">';
+                html += `<div class="group-title">Skupina ${idx + 1}</div>`;
+                html += '<div class="group-players">';
+                group.forEach((player, pIdx) => {
+                    const advanceMarker = pIdx < schedule.round1MaxAdvance ? ' ⭐' : '';
+                    html += `<div class="group-player">${escapeHtmlSafe(player.name)} (${player.rating.toFixed(0)})${advanceMarker}</div>`;
+                });
+                html += '</div></div>';
+            });
+            html += '</div>';
+            
+            // Round 2
+            if (schedule.koBracket.length > 0) {
+                html += '<div class="round-section">';
+                html += '<div class="round-title">Round 2 - KO Bracket</div>';
+                html += '<div class="ko-bracket">';
+                schedule.koBracket.forEach((match, idx) => {
+                    html += '<div class="ko-match">';
+                    html += `<div class="ko-match-title">Zápas ${idx + 1}</div>`;
+                    html += `<div>${escapeHtmlSafe(match.player1)} vs ${match.player2 ? escapeHtmlSafe(match.player2) : 'BYE'}</div>`;
+                    html += '</div>';
+                });
+                html += '</div></div>';
+            } else if (schedule.round2Groups.length > 0) {
+                html += '<div class="round-section">';
+                html += '<div class="round-title">Round 2 - Skupiny</div>';
+                schedule.round2Groups.forEach((group, idx) => {
+                    html += '<div class="group-section">';
+                    html += `<div class="group-title">Skupina ${idx + 1}</div>`;
+                    html += '<div class="group-players">';
+                    group.forEach(player => {
+                        html += `<div class="group-player">${escapeHtmlSafe(player.name)} (${player.rating.toFixed(0)})</div>`;
+                    });
+                    html += '</div></div>';
+                });
+                html += '</div>';
+            }
+            
+            // Final
+            if (schedule.playSecondFinal) {
+                html += '<div class="round-section">';
+                html += '<div class="round-title">Finále</div>';
+                html += '<div class="group-section">';
+                html += '<div class="group-title">Finále 1 vs Finále 2</div>';
+                html += '</div></div>';
+            }
+            
+            DOM.scheduleContainer.innerHTML = html;
+            DOM.scheduleContainer.style.display = 'block';
+        }
+
+        DOM.startSeedBtn.onclick = () => {
+            const players = Array.from(DOM.playerContainer.querySelectorAll('input'))
+                .map(i => i.value.trim())
+                .filter(v => v);
+            
+            if (players.length === 0) {
+                showStatus(DOM.submitStatus, "Pridajte aspoň jedného hráča pred seedovaním", "error");
+                return;
+            }
+            
+            DOM.seedSection.style.display = 'block';
+            renderPlayersList();
+            
+            // Scroll to seed section
+            DOM.seedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        DOM.round2IsKO.addEventListener('change', (e) => {
+            DOM.round2MinPlayersGroup.style.display = e.target.checked ? 'none' : 'block';
+        });
+
+        DOM.seedForm.onsubmit = (e) => {
+            e.preventDefault();
+            
+            const round1MinPlayers = parseInt(DOM.seedForm.querySelector('#round1MinPlayers').value) || 4;
+            const round1MaxAdvance = parseInt(DOM.seedForm.querySelector('#round1MaxAdvance').value) || 2;
+            const round2IsKO = DOM.round2IsKO.checked;
+            const round2MinPlayers = parseInt(DOM.seedForm.querySelector('#round2MinPlayers').value) || 4;
+            const playSecondFinal = document.getElementById('playSecondFinal').checked;
+            
+            const players = getPlayersWithRatings();
+            const schedule = seedPlayers(players, round1MinPlayers, round1MaxAdvance, round2IsKO, round2MinPlayers, playSecondFinal);
+            schedule.round1MaxAdvance = round1MaxAdvance; // Store for display
+            renderSchedule(schedule);
+        };
+
+        // --- SETTINGS ---
+        const SHOW_OLD_SEASONS_KEY = 'show_old_seasons';
+        
+        function loadSettings() {
+            const showOldSeasons = localStorage.getItem(SHOW_OLD_SEASONS_KEY) === 'true';
+            if (DOM.showOldSeasons) {
+                DOM.showOldSeasons.checked = showOldSeasons;
+            }
+        }
+        
+        DOM.settingsForm.onsubmit = (e) => {
+            e.preventDefault();
+            const showOldSeasons = DOM.showOldSeasons.checked;
+            localStorage.setItem(SHOW_OLD_SEASONS_KEY, showOldSeasons.toString());
+            showStatus(DOM.settingsStatus, 'Nastavenia uložené', 'success');
+        };
+
+        // --- RATING SIMULATION ---
+        function winProb(ratingA, ratingB) {
+            return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 300));
+        }
+
+        function getScoreDistribution(probWin) {
+            const p = Math.max(0, Math.min(1, probWin || 0));
+            return {
+                '3-0': p * p * p * 100,
+                '3-1': 3 * p * p * p * (1 - p) * 100,
+                '3-2': 6 * p * p * p * (1 - p) * (1 - p) * 100,
+                '2-3': 6 * (1 - p) * (1 - p) * (1 - p) * p * p * 100,
+                '1-3': 3 * (1 - p) * (1 - p) * (1 - p) * p * 100,
+                '0-3': (1 - p) * (1 - p) * (1 - p) * 100
+            };
+        }
+
+        function getKFactor(matches) {
+            if (matches < 5) return 30;
+            if (matches < 10) return 20;
+            return 10;
+        }
+
+        function calculateRatingChange(ratingA, ratingB, scoreA, scoreB, kFactorA, kFactorB) {
+            const N = scoreA + scoreB;
+            const expectedA = N / (1 + Math.pow(10, (ratingB - ratingA) / 300));
+            const expectedB = N / (1 + Math.pow(10, (ratingA - ratingB) / 300));
+            
+            const diffA = scoreA - expectedA;
+            const diffB = scoreB - expectedB;
+            
+            const deltaA = kFactorA * diffA;
+            const deltaB = kFactorB * diffB;
+            
+            return {
+                deltaA: deltaA,
+                deltaB: deltaB,
+                newRatingA: ratingA + deltaA,
+                newRatingB: ratingB + deltaB
+            };
+        }
+
+        function renderRatingSimulation(ratingA, ratingB) {
+            const kFactorA = getKFactor(10); // Using default K-factor
+            const kFactorB = getKFactor(10);
+            
+            // Update player info
+            document.getElementById('simPlayerAName').textContent = 'Player A';
+            document.getElementById('simPlayerBName').textContent = 'Player B';
+            document.getElementById('simRatingA').textContent = ratingA.toFixed(2);
+            document.getElementById('simRatingB').textContent = ratingB.toFixed(2);
+            document.getElementById('simKFactorA').textContent = kFactorA;
+            document.getElementById('simKFactorB').textContent = kFactorB;
+            
+            // Calculate and render prediction probabilities
+            const probWin = winProb(ratingA, ratingB);
+            const dist = getScoreDistribution(probWin);
+            const scores = ['3-0', '3-1', '3-2', '2-3', '1-3', '0-3'];
+            
+            let maxVal = -Infinity, minVal = Infinity;
+            scores.forEach(score => {
+                const pct = dist[score] || 0;
+                if (pct > maxVal) maxVal = pct;
+                if (pct < minVal) minVal = pct;
+            });
+            
+            const predictionList = document.getElementById('simPredictionList');
+            predictionList.innerHTML = scores.map(score => {
+                const pct = dist[score] || 0;
+                const isMax = pct === maxVal;
+                const isMin = pct === minVal;
+                return `
+                    <div class="prediction-row" style="${isMax ? 'background: var(--color-success-soft);' : ''}">
+                        <div class="prediction-score">${score.replace('-', ':')}</div>
+                        <div class="prediction-bar-container">
+                            <div class="prediction-bar-fill" style="width: ${pct}%"></div>
+                        </div>
+                        <div class="prediction-pct">${pct.toFixed(1)}%</div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Calculate and render rating simulation scenarios
+            const scenarios = [
+                { scoreA: 3, scoreB: 0, label: '3:0', isWin: true },
+                { scoreA: 3, scoreB: 1, label: '3:1', isWin: true },
+                { scoreA: 3, scoreB: 2, label: '3:2', isWin: true },
+                { scoreA: 2, scoreB: 3, label: '2:3', isWin: false },
+                { scoreA: 1, scoreB: 3, label: '1:3', isWin: false },
+                { scoreA: 0, scoreB: 3, label: '0:3', isWin: false }
+            ];
+            
+            const ratingGrid = document.getElementById('simRatingGrid');
+            ratingGrid.innerHTML = scenarios.map(s => {
+                const result = calculateRatingChange(ratingA, ratingB, s.scoreA, s.scoreB, kFactorA, kFactorB);
+                const deltaClass = result.deltaA >= 0 ? 'positive' : 'negative';
+                const deltaSign = result.deltaA >= 0 ? '+' : '';
+                const scenarioClass = s.isWin ? 'win' : 'loss';
+                
+                return `
+                    <div class="sim-scenario ${scenarioClass}">
+                        <div class="sim-scenario-score">${s.label}</div>
+                        <div class="sim-scenario-delta ${deltaClass}">
+                            ${deltaSign}${result.deltaA.toFixed(2)}
+                        </div>
+                        <div class="sim-scenario-new-rating">
+                            Nový rating: ${result.newRatingA.toFixed(2)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            DOM.ratingSimResult.style.display = 'block';
+        }
+
+        DOM.ratingSimForm.onsubmit = (e) => {
+            e.preventDefault();
+            const ratingA = parseFloat(document.getElementById('ratingA').value);
+            const ratingB = parseFloat(document.getElementById('ratingB').value);
+            
+            if (isNaN(ratingA) || isNaN(ratingB)) {
+                alert('Prosím zadajte platné hodnoty ratingu');
+                return;
+            }
+            
+            renderRatingSimulation(ratingA, ratingB);
+        };
+
+        // --- INIT ---
+        document.getElementById('addPlayerBtn').onclick = () => addPlayerRow();
+        document.getElementById('addNewPlayerBtn').onclick = () => addPlayerRow();
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            checkAuth();
+            loadSettings();
+            try {
+                await window.matchResultsPromise;
+                if (typeof processData === 'function') {
+                    const { players } = processData();
+                    playersData = players; // Store full player data
+                    allPlayers = Object.values(players).sort((a, b) => a.name.localeCompare(b.name, 'sk'));
+                }
+            } catch (e) { console.error(e); }
+            document.body.classList.remove('loading');
+            document.getElementById('pageLoader').style.display = 'none';
+            const currentYearEl = document.getElementById('currentYear');
+            if (currentYearEl) currentYearEl.textContent = new Date().getFullYear();
+        });
+    })();
+</script>
+</body>
+</html>

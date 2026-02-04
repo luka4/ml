@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RP5HV7SX60"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-RP5HV7SX60');
+    </script>
+    <title>Košická Miniliga - Predikcia</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/loader2.css">
+    <link rel="stylesheet" href="styles/shared.css">
+    <link rel="stylesheet" href="styles/prediction.css">
+    <link rel="canonical" href="https://miniliga.sk/prediction.html" />
+</head>
+<body id="page-prediction" class="loading">
+
+<div id="pageLoader">
+    <div class="loader">
+        <div class="scene">
+            <div class="table"></div>
+            <div class="net"></div>
+            <div class="racket left"></div>
+            <div class="racket right"></div>
+            <div class="ball"></div>
+        </div>
+        <div class="loading-text">Načítava sa</div>
+    </div>
+</div>
+
+<div id="pageContent">
+    <div id="mainNavContainer"></div>
+    <div class="container" id="mainContainer">
+        <h2>Predikcia zápasov</h2>
+        <p class="page-intro">Vyberte tímy alebo konkrétnych hráčov a zobrazte očakávané výsledky vrátane pravdepodobností jednotlivých skóre.</p>
+
+        <section class="prediction-card" id="teamPredictionSection">
+            <div class="section-header">
+                <div class="section-title">Tímová predikcia</div>
+                <div class="section-subtitle">Zostavte nominácie oboch tímov, zobrazte očakávaný výsledok a pravdepodobnosti skóre pre singles aj doubles.</div>
+            </div>
+
+            <div class="pred-controls pred-controls--stacked">
+                <div class="team-select-row team-select-row--right">
+                    <div class="selector-group">
+                        <label for="teamSelectA">Domáci tím</label>
+                        <select id="teamSelectA">
+                            <option value="">Vyberte domáci tím</option>
+                        </select>
+                    </div>
+                    <div class="team-logo-chip" id="teamLogoA"></div>
+                </div>
+                <div class="selector-group vs-group">
+                    <span class="pred-vs">VS</span>
+                </div>
+                <div class="team-select-row team-select-row--left">
+                    <div class="selector-group">
+                        <label for="teamSelectB">Hosťujúci tím</label>
+                        <select id="teamSelectB">
+                            <option value="">Vyberte hosťujúci tím</option>
+                        </select>
+                    </div>
+                    <div class="team-logo-chip" id="teamLogoB"></div>
+                </div>
+            </div>
+            <div id="teamPredictionStatus" class="status-text"></div>
+
+            <div class="lineup-wrapper" id="lineupWrapper">
+                <div class="lineup-card">
+                    <div class="lineup-title" id="lineupTitleA">Zostava domáci</div>
+                    <div class="lineup-body" id="teamLineupA"></div>
+                </div>
+                <div class="lineup-card">
+                    <div class="lineup-title" id="lineupTitleB">Zostava hostia</div>
+                    <div class="lineup-body" id="teamLineupB"></div>
+                </div>
+            </div>
+            <div class="predict-action-row">
+                <button id="teamPredictBtn" class="pred-btn">Vypočítať predikciu</button>
+            </div>
+
+            <div id="teamPredictionResult" class="pred-result">
+                <div class="score-prediction" id="teamPredScore">-- : --</div>
+                <div class="pred-details">
+                    <div class="rating-box">Ø Rating: <span class="rating-val" id="teamRateA">0</span></div>
+                    <div class="rating-box">Ø Rating: <span class="rating-val" id="teamRateB">0</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="prediction-card" id="matchSimulatorSection">
+            <div class="section-header">
+                <div class="section-title">🎯 Predikcia & Simulátor</div>
+                <div class="section-subtitle">Vyberte dvoch hráčov a zobrazte pravdepodobnosť výsledkov aj simuláciu zmeny ratingu.</div>
+            </div>
+
+            <form id="matchSimulatorForm" class="individual-form">
+                <div class="selector-group">
+                    <label for="simPlayerA">Hráč A</label>
+                    <input id="simPlayerA" list="simPlayersList" placeholder="Začnite písať meno hráča..." autocomplete="off">
+                </div>
+                <div class="selector-group vs-group">
+                    <span class="pred-vs">VS</span>
+                </div>
+                <div class="selector-group">
+                    <label for="simPlayerB">Hráč B</label>
+                    <input id="simPlayerB" list="simPlayersList" placeholder="Začnite písať meno hráča..." autocomplete="off">
+                </div>
+                <div class="selector-group action-group">
+                    <button type="submit" class="pred-btn">Analyzovať</button>
+                </div>
+            </form>
+            <datalist id="simPlayersList"></datalist>
+            <div id="simStatus" class="status-text"></div>
+
+            <div id="simResult" class="pred-result sim-result">
+                <!-- Player Info Header -->
+                <div class="sim-players">
+                    <div class="sim-player sim-player--a">
+                        <div class="sim-player-name" id="simNameA">-</div>
+                        <div class="sim-player-team" id="simTeamA"></div>
+                        <div class="sim-player-rating">Rating: <span id="simRatingA">-</span></div>
+                        <div class="sim-player-kfactor">K-faktor: <span id="simKFactorA">-</span></div>
+                    </div>
+                    <div class="sim-vs">VS</div>
+                    <div class="sim-player sim-player--b">
+                        <div class="sim-player-name" id="simNameB">-</div>
+                        <div class="sim-player-team" id="simTeamB"></div>
+                        <div class="sim-player-rating">Rating: <span id="simRatingB">-</span></div>
+                        <div class="sim-player-kfactor">K-faktor: <span id="simKFactorB">-</span></div>
+                    </div>
+                </div>
+
+                <!-- Combined Results -->
+                <div class="sim-results-grid">
+                    <!-- Prediction probabilities -->
+                    <div class="sim-section sim-section--prediction">
+                        <div class="sim-section-title">📊 Pravdepodobnosť výsledkov</div>
+                        <div class="sim-section-note" id="simScoreNote">Skóre je uvádzané ako Hráč A : Hráč B.</div>
+                        <div class="score-list score-list--grid" id="simScoreList"></div>
+                    </div>
+
+                    <!-- Rating simulation -->
+                    <div class="sim-section sim-section--rating">
+                        <div class="sim-section-title">🎯 Simulácia zmeny ratingu</div>
+                        <div class="sim-section-note">Ako by sa zmenil rating Hráča A pri jednotlivých výsledkoch.</div>
+                        <div class="whatif-grid" id="simWhatIfGrid"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3 class="footer-title">Košická Miniliga</h3>
+                <p class="footer-description">Výsledky, tabuľky a ratingy hráčov pre Košickú stolnotenisovú Miniligu. Nezávislý projekt.</p>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">Navigácia</h4>
+                <nav class="footer-nav">
+                    <a href="index.html" class="footer-link">Domov</a>
+                    <a href="results.html" class="footer-link">Výsledky</a>
+                    <a href="rating.html" class="footer-link">Rating</a>
+                    <a href="table.html" class="footer-link">Tabuľka</a>
+                    <a href="prediction.html" class="footer-link">Predikcie</a>
+                </nav>
+            </div>
+            <div class="footer-section">
+                <h4 class="footer-heading">O stránke</h4>
+                <p class="footer-text">Stolný tenis v Košiciach</p>
+                <p class="footer-text">Systém ratingov založený na ELO</p>
+                <p class="footer-text">Kontakty: <a href="mailto:info@miniliga.sk">info@miniliga.sk</a></p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copyright">&copy; <span id="currentYear"></span> miniliga.sk. Nezávislý projekt pre zobrazenie výsledkov Košickej Miniligy.</p>
+        </div>
+    </footer>
+</div>
+
+<script src="googleSheetsLoader.js?v=2"></script>
+<script src="matchData.js?v=7"></script>
+<script src="script.js?v=10"></script>
+</body>
+</html>
+
