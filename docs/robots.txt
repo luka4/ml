@@ -1,9 +1,8 @@
 # robots.txt for Košická Miniliga
-# https://miniliga.sk
+# https://miniliga.online
 
 User-agent: *
-Allow: /
+Disallow: /
 
 # Sitemap
-Sitemap: https://miniliga.sk/sitemap.xml
-
+#Sitemap: https://miniliga.sk/sitemap.xml
