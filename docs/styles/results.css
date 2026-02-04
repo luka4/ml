@@ -1,12 +1,16 @@
-/* Results page (results.html) */
+/* Results page (results.html) AND Schedule page (schedule.html) */
 
-#page-results .container {
+/* Apply container max-width to both pages */
+#page-results .container,
+#page-schedule .container {
   max-width: 900px;
   margin: 0 auto;
   padding-top: 20px;
 }
 
-#page-results h2 {
+/* Apply header styling to both pages */
+#page-results h2,
+#page-schedule h2 {
   text-align: center;
   color: var(--color-text);
   margin: 0 0 25px 0;
@@ -76,18 +80,19 @@
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .results-filter-section input {
     max-width: 100%;
   }
-  
+
   .results-filter-btn {
     width: 100%;
   }
 }
 
-/* Results uses gray round headers + sticky behavior */
-#page-results .round-header {
+/* Apply sticky header behavior to both pages */
+#page-results .round-header,
+#page-schedule .round-header {
   background: var(--color-surface-2);
   color: var(--color-text-subtle);
   position: sticky;
@@ -95,5 +100,3 @@
   z-index: 10;
   border-radius: 8px 8px 0 0;
 }
-
-

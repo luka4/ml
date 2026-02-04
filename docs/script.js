@@ -1568,6 +1568,166 @@ function renderHomePage() {
     }
 }
 
+// --- SCHEDULE PAGE ---
+function renderSchedulePage() {
+    // Process data to get player/team structures (needed for active rating calculation)
+    const {players} = processData();
+    const playerArr = Object.values(players);
+
+    // Create team map
+    const teamMap = new Map();
+    playerArr.forEach(p => {
+        if (p.team && p.team !== 'N/A') {
+            if (!teamMap.has(p.team)) teamMap.set(p.team, []);
+            teamMap.get(p.team).push(p);
+        }
+    });
+    // Use global sortRoster for consistent rating calc
+    teamMap.forEach((list, key) => teamMap.set(key, sortRoster(list)));
+
+    // Get team names for filter
+    const teamNames = Array.from(teamMap.keys()).sort((a, b) => a.localeCompare(b, 'sk', {sensitivity: 'base'}));
+
+    // Populate team filter datalist
+    const teamsList = document.getElementById('scheduleTeamsList');
+    if (teamsList) {
+        teamsList.innerHTML = '';
+        teamNames.forEach(team => {
+            const opt = document.createElement('option');
+            opt.value = team;
+            teamsList.appendChild(opt);
+        });
+    }
+
+    // DOM elements for filter
+    const teamFilterInput = document.getElementById('scheduleTeamFilter');
+    const applyFilterBtn = document.getElementById('applyScheduleFilterBtn');
+    const clearFilterBtn = document.getElementById('clearScheduleFilterBtn');
+
+    let selectedTeam = null;
+
+    // Filter matches by team
+    const filterMatchesByTeam = (teamName) => {
+        if (!teamName) return null;
+        return (m) => {
+            return m.player_a_team === teamName || m.player_b_team === teamName;
+        };
+    };
+
+    // Render matches with optional team filter
+    const renderMatches = (teamFilter = null) => {
+        const container = document.getElementById('scheduleContainer');
+        container.innerHTML = '';
+
+        const rounds = {};
+        // 1. Filter for UNPLAYED matches
+        let matchesToProcess = matchResults.filter(m => !isPlayedMatch(m));
+
+        // 2. Apply team filter if provided
+        if (teamFilter) {
+            const filterFunc = filterMatchesByTeam(teamFilter);
+            matchesToProcess = matchesToProcess.filter(filterFunc);
+        }
+
+        if (matchesToProcess.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--color-muted);">Žiadne naplánované zápasy.</div>';
+            return;
+        }
+
+        // Group by ROUND ID
+        matchesToProcess.forEach(m => {
+            const id = getMatchRoundId(m);
+            if (!rounds[id]) {
+                const rNum = parseInt((m.round.match(/\d+/) || [0])[0]);
+                rounds[id] = {
+                    id: id,
+                    name: m.round,
+                    season: m.season,
+                    matches: [],
+                    seasonOrder: getSeasonOrder(m.season),
+                    roundNum: rNum
+                };
+            }
+            rounds[id].matches.push(m);
+        });
+
+        // Sort Rounds: Earliest Season first, then Smallest Round number first (Upcoming)
+        const sortedRoundIds = Object.keys(rounds).sort((a, b) => {
+            const rA = rounds[a];
+            const rB = rounds[b];
+
+            if (rA.seasonOrder !== rB.seasonOrder) {
+                return rA.seasonOrder - rB.seasonOrder; // ASC order (older/current season first)
+            }
+            return rA.roundNum - rB.roundNum; // ASC order (upcoming round 14 before 15)
+        });
+
+        sortedRoundIds.forEach(id => {
+            const r = rounds[id];
+            const roundWrapper = document.createElement('div');
+            roundWrapper.className = 'round-group';
+            const header = document.createElement('div');
+            header.className = 'round-header';
+
+            const seasonPart = r.season ? `. ${r.season}` : '';
+            header.innerText = `${r.name}${seasonPart}`;
+
+            roundWrapper.appendChild(header);
+
+            // Re-use the existing generic match list renderer
+            // It knows how to handle unplayed matches (shows VS, predictions based on active rating)
+            renderMatchList(r.matches, roundWrapper, true, players, teamMap, selectedTeam);
+
+            container.appendChild(roundWrapper);
+        });
+    };
+
+    // Apply filter button handler
+    if (applyFilterBtn) {
+        applyFilterBtn.onclick = () => {
+            const inputValue = teamFilterInput ? teamFilterInput.value.trim() : '';
+            if (!inputValue) {
+                alert('Prosím, vyberte tím');
+                return;
+            }
+
+            const matchedTeam = teamNames.find(t => t.toLowerCase() === inputValue.toLowerCase());
+            if (!matchedTeam) {
+                alert('Tím nebol nájdený. Prosím, vyberte tím zo zoznamu.');
+                return;
+            }
+
+            selectedTeam = matchedTeam;
+            if (teamFilterInput) teamFilterInput.value = matchedTeam;
+            if (clearFilterBtn) clearFilterBtn.style.display = 'inline-block';
+            renderMatches(selectedTeam);
+        };
+    }
+
+    // Clear filter button handler
+    if (clearFilterBtn) {
+        clearFilterBtn.onclick = () => {
+            selectedTeam = null;
+            if (teamFilterInput) teamFilterInput.value = '';
+            clearFilterBtn.style.display = 'none';
+            renderMatches(null);
+        };
+    }
+
+    // Allow Enter key to submit filter
+    if (teamFilterInput) {
+        teamFilterInput.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (applyFilterBtn) applyFilterBtn.click();
+            }
+        };
+    }
+
+    // Initial render
+    renderMatches(null);
+}
+
 // --- RESULTS PAGE ---
 function renderResultsPage() {
     const {players} = processData();
@@ -7306,6 +7466,7 @@ function renderNavigation() {
 
     // Define links
     const links = [
+        { url: 'schedule.html', text: 'Rozpis' },
         { url: 'results.html', text: 'Výsledky' },
         { url: 'table.html', text: 'Tabuľka' },
         { url: 'rating.html', text: 'Rating' },
@@ -7433,6 +7594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (id === 'page-rating') renderRatingPage();
         else if (id === 'page-home') renderHomePage();
         else if (id === 'page-results') renderResultsPage();
+        else if (id === 'page-schedule') renderSchedulePage();
         else if (id === 'page-table') renderTablePage();
         else if (id === 'page-prediction') renderPredictionPage();
         else if (id === 'page-mystats') renderMyStatsPage();
