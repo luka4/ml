@@ -86,6 +86,18 @@ function isWalkoverToken(name) {
     return n === 'WO' || n === 'W/O' || n === 'W.O.';
 }
 
+// Check if all games in a team match are WO (walkover)
+function areAllGamesWO(match) {
+    if (!match || !match.games || match.games.length === 0) return false;
+    
+    // Check if all games have WO on both sides
+    return match.games.every(g => {
+        const playerA = String(g.player_a || '').trim();
+        const playerB = String(g.player_b || '').trim();
+        return isWalkoverToken(playerA) && isWalkoverToken(playerB);
+    });
+}
+
 // Minimal HTML escaping for safe text/attribute interpolation in innerHTML strings.
 function escapeHtml(str) {
     return String(str ?? '')
@@ -2147,6 +2159,20 @@ function renderMatchList(matches, container, appendToProvided, playersData = nul
             summary.innerHTML = `<div class="team-name team-left">${escapeHtml(match.teamA)}</div>${logoAHtml}<div class="score-badge ${scoreBadgeClass}">${match.scoreA}-${match.scoreB}</div>${logoBHtml}<div class="team-name team-right">${escapeHtml(match.teamB)}</div><div class="expand-icon">▼</div>`;
             const details = document.createElement('div');
             details.className = 'match-details';
+            
+            // Check if all games are WO - if so, show notice instead of match details
+            if (areAllGamesWO(match)) {
+                details.innerHTML = '<div class="wo-notice">Detaily jednotlivých zápasov nie sú známe, skontrolujte neskôr.</div>';
+                summary.onclick = () => {
+                    const isEx = details.style.display === 'block';
+                    details.style.display = isEx ? 'none' : 'block';
+                    matchRow.classList.toggle('active', !isEx);
+                };
+                matchRow.appendChild(summary);
+                matchRow.appendChild(details);
+                wrapper.appendChild(matchRow);
+                return;
+            }
 
             // --- STATS GENERATION START ---
             const stats = {};
@@ -6317,6 +6343,20 @@ function renderMyTeamPage() {
 
             const details = document.createElement('div');
             details.className = 'match-details';
+            
+            // Check if all games are WO - if so, show notice instead of match details
+            if (areAllGamesWO(match)) {
+                details.innerHTML = '<div class="wo-notice">Detaily jednotlivých zápasov nie sú známe, skontrolujte neskôr.</div>';
+                summary.onclick = () => {
+                    const isEx = details.style.display === 'block';
+                    details.style.display = isEx ? 'none' : 'block';
+                    matchRow.classList.toggle('active', !isEx);
+                };
+                matchRow.appendChild(summary);
+                matchRow.appendChild(details);
+                wrapper.appendChild(matchRow);
+                return;
+            }
 
             // Stats generation
             const stats = {};
@@ -6727,6 +6767,20 @@ function renderMyTeamPage() {
 
                         const details = document.createElement('div');
                         details.className = 'match-details';
+                        
+                        // Check if all games are WO - if so, show notice instead of match details
+                        if (areAllGamesWO(match)) {
+                            details.innerHTML = '<div class="wo-notice">Detaily jednotlivých zápasov nie sú známe, skontrolujte neskôr.</div>';
+                            summary.onclick = () => {
+                                const isEx = details.style.display === 'block';
+                                details.style.display = isEx ? 'none' : 'block';
+                                matchRow.classList.toggle('active', !isEx);
+                            };
+                            matchRow.appendChild(summary);
+                            matchRow.appendChild(details);
+                            wrapper.appendChild(matchRow);
+                            return;
+                        }
 
                         const stats = {};
                         match.games.forEach(g => {

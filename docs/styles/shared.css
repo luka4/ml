@@ -519,6 +519,16 @@ a {
   border: 1px solid var(--color-border);
 }
 
+.wo-notice {
+    padding: 20px;
+    text-align: center;
+    color: #000;
+    font-style: italic;
+    background-color: #dbeafe;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
 .match-details {
   display: none;
   background-color: #dbeafe;
