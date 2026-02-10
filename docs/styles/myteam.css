@@ -602,3 +602,29 @@
   }
 }
 
+/* Clickable section titles */
+#page-myteam .mystats-section-title {
+  cursor: pointer;
+  transition: color 0.2s, opacity 0.2s;
+  position: relative;
+  padding-right: 24px;
+}
+
+#page-myteam .mystats-section-title:hover {
+  color: var(--color-primary);
+  opacity: 0.9;
+}
+
+#page-myteam .mystats-section-title::after {
+  content: '🔗';
+  position: absolute;
+  right: 0;
+  font-size: 0.7em;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+#page-myteam .mystats-section-title:hover::after {
+  opacity: 0.6;
+}
+

@@ -2855,8 +2855,27 @@ function renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt = 
 // --- RATING PAGE ---
 function renderRatingPage() {
     const {players} = processData();
-    // Baseline order (default view): by rating desc
-    const sortedPlayers = Object.values(players).sort((a, b) => b.rating - a.rating);
+    
+    // Helper function to get rating color group priority
+    // Green (21+ matches) = 3, Orange (11-20 matches) = 2, Red (0-10 matches) = 1
+    const getRatingColorGroup = (p) => {
+        const totalMatches = (p.matches || 0) + (p.dMatches || 0);
+        if (totalMatches > 20) return 3; // Green
+        if (totalMatches > 10) return 2; // Orange
+        return 1; // Red
+    };
+    
+    // Baseline order (default view): by color group (green, orange, red), then by rating desc within each group
+    const sortedPlayers = Object.values(players).sort((a, b) => {
+        const colorGroupA = getRatingColorGroup(a);
+        const colorGroupB = getRatingColorGroup(b);
+        // First sort by color group (descending: green=3, orange=2, red=1)
+        if (colorGroupA !== colorGroupB) {
+            return colorGroupB - colorGroupA;
+        }
+        // Within same color group, sort by rating (descending)
+        return b.rating - a.rating;
+    });
 
     // Attach "Rebríček" points per player (computed from matchResults + kontumácia rules)
     const rebricekMap = computeRebricekMap(players);
@@ -2927,7 +2946,7 @@ function renderRatingPage() {
 
     // Sorting state (applies to all columns except "Tím")
     const baselineIndex = new Map(sortedPlayers.map((p, i) => [normalizePlayerKey(p.name), i]));
-    let sortState = { key: 'rating', dir: 'desc' }; // default = rating desc
+    let sortState = { key: 'pos', dir: 'asc' }; // default = rating desc
 
     const cmpStr = (a, b) => String(a || '').localeCompare(String(b || ''), 'sk', {sensitivity: 'base'});
     const cmpNum = (a, b) => (Number(a) || 0) - (Number(b) || 0);
@@ -5627,6 +5646,89 @@ function renderMyTeamPage() {
         return { wins, draws, losses };
     };
 
+    // Section anchor functionality
+    const setupSectionAnchors = () => {
+        // Map of section IDs to their titles
+        const sectionMap = {
+            'section-overview': '📊 Prehľad',
+            'section-players': '👥 Hráči',
+            'section-rating': '📈 Vývoj Ratingu',
+            'section-compare': '⚔️ Porovnanie',
+            'section-upcoming': '📅 Nadchádzajúce',
+            'section-prediction': '🎯 Predikcia',
+            'section-matches': '📜 Posledné Zápasy'
+        };
+
+        // Function to scroll to a section smoothly
+        const scrollToSection = (sectionId) => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                const headerOffset = 80; // Account for fixed header if any
+                const elementPosition = section.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        };
+
+        // Function to update URL with anchor
+        const updateURLWithAnchor = (sectionId) => {
+            const url = new URL(window.location.href);
+            url.hash = sectionId;
+            window.history.pushState({}, '', url);
+        };
+
+        // Add click handlers to section titles
+        Object.keys(sectionMap).forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                const title = section.querySelector('.mystats-section-title');
+                if (title && !title.dataset.anchorSetup) {
+                    // Mark as set up to avoid duplicate handlers
+                    title.dataset.anchorSetup = 'true';
+                    // Make title clickable
+                    title.style.cursor = 'pointer';
+                    title.style.userSelect = 'none';
+                    title.setAttribute('title', 'Kliknite pre zdieľanie tejto sekcie');
+                    
+                    title.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        updateURLWithAnchor(sectionId);
+                        scrollToSection(sectionId);
+                    });
+                }
+            }
+        });
+
+        // Handle initial hash on page load
+        const handleHash = () => {
+            const hash = window.location.hash.slice(1); // Remove #
+            if (hash && sectionMap[hash]) {
+                // Wait a bit for content to render if team was just loaded
+                setTimeout(() => {
+                    scrollToSection(hash);
+                }, 100);
+            }
+        };
+
+        // Handle hash changes (back/forward buttons)
+        if (!window.myTeamHashChangeHandler) {
+            window.myTeamHashChangeHandler = () => {
+                const hash = window.location.hash.slice(1);
+                if (hash && sectionMap[hash]) {
+                    scrollToSection(hash);
+                }
+            };
+            window.addEventListener('hashchange', window.myTeamHashChangeHandler);
+        }
+
+        // Call on initial load
+        handleHash();
+    };
+
     // Calculate team form (last 5 team matches)
     const getTeamForm = (teamName) => {
         const teamMatches = matchResults.filter(m => {
@@ -7350,6 +7452,11 @@ function renderMyTeamPage() {
         renderUpcomingMatches(teamName);
         renderRecentMatches(teamName);
         initTeamPrediction(teamName);
+        
+        // Setup section anchors after content is rendered
+        setTimeout(() => {
+            setupSectionAnchors();
+        }, 100);
     };
 
     // Event handlers
@@ -7499,6 +7606,11 @@ function renderMyTeamPage() {
     } else {
         showSelectScreen();
     }
+
+    // Setup anchors after initial render
+    setTimeout(() => {
+        setupSectionAnchors();
+    }, 200);
 }
 
 // ============================================================
