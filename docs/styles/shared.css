@@ -603,10 +603,96 @@ a {
 /* Compact table styles */
 .compact-match-table-container {
   margin: 10px 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  -webkit-overflow-scrolling: touch;
+}
+
+.compact-match-table-wrapper {
   overflow-x: auto;
+  width: 100%;
   display: flex;
   justify-content: center;
   -webkit-overflow-scrolling: touch;
+}
+
+.compact-doubles-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.compact-doubles-card {
+  background-color: var(--color-surface-2);
+  border-radius: 6px;
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  width: 600px;
+  max-width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.compact-doubles-card--win {
+  background: var(--color-success) !important;
+  color: var(--color-text-inverse) !important;
+}
+
+.compact-doubles-card--loss {
+  background: var(--color-danger) !important;
+  color: var(--color-text-inverse) !important;
+}
+
+.compact-doubles-players {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.compact-doubles-team {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.compact-doubles-player {
+  display: inline-block;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.compact-doubles-separator {
+  display: inline-block;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.compact-doubles-score {
+  font-weight: 800;
+  font-size: 1.2em;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  text-align: center;
 }
 
 .compact-match-table {
@@ -698,9 +784,42 @@ a {
 @media screen and (max-width: 600px) {
   .compact-match-table-container {
     margin: 10px 8px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    align-items: flex-start;
+  }
+
+  .compact-match-table-wrapper {
     justify-content: flex-start;
+  }
+
+  .compact-doubles-matches {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .compact-doubles-card {
+    padding: 10px 12px;
+    min-height: 55px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .compact-doubles-players {
+    gap: 8px;
+  }
+
+  .compact-doubles-team {
+    font-size: 0.8em;
+    flex: 1;
+    min-width: 80px;
+  }
+
+  .compact-doubles-player {
+    max-width: 90px;
+  }
+
+  .compact-doubles-score {
+    font-size: 1em;
+    padding: 0;
   }
 
   .compact-match-table {

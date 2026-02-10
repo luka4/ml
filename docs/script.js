@@ -196,8 +196,61 @@ function buildCompactMatchTable(match) {
     
     if (orderedPlayersA.length === 0 || orderedPlayersB.length === 0) return '';
     
+    // Build doubles matches display
+    let doublesHtml = '';
+    if (doublesGames.length > 0) {
+        doublesHtml = '<div class="compact-doubles-matches">';
+        doublesGames.forEach(g => {
+            const rawPlayersA = (g.player_a || '').split('/').map(n => n.trim());
+            const rawPlayersB = (g.player_b || '').split('/').map(n => n.trim());
+            const hasWO_A = rawPlayersA.some(n => isWalkoverToken(n));
+            const hasWO_B = rawPlayersB.some(n => isWalkoverToken(n));
+            
+            const scoreA = parseInt(g.score_a) || 0;
+            const scoreB = parseInt(g.score_b) || 0;
+            const isWin = scoreA > scoreB;
+            
+            // Handle WO cases and format players (each player separately for individual truncation)
+            let playersA_html, playersB_html;
+            if (hasWO_A && hasWO_B) {
+                // Both sides are WO
+                playersA_html = '<span class="compact-doubles-player">WO</span>';
+                playersB_html = '<span class="compact-doubles-player">WO</span>';
+            } else if (hasWO_A) {
+                playersA_html = '<span class="compact-doubles-player">WO</span>';
+                const playersB = rawPlayersB.filter(n => !isWalkoverToken(n));
+                playersB_html = playersB.length > 0 
+                    ? playersB.map(p => `<span class="compact-doubles-player">${escapeHtml(formatPlayerName(p))}</span>`).join('<span class="compact-doubles-separator"> / </span>')
+                    : '<span class="compact-doubles-player">WO</span>';
+            } else if (hasWO_B) {
+                const playersA = rawPlayersA.filter(n => !isWalkoverToken(n));
+                playersA_html = playersA.length > 0
+                    ? playersA.map(p => `<span class="compact-doubles-player">${escapeHtml(formatPlayerName(p))}</span>`).join('<span class="compact-doubles-separator"> / </span>')
+                    : '<span class="compact-doubles-player">WO</span>';
+                playersB_html = '<span class="compact-doubles-player">WO</span>';
+            } else {
+                // No WO, format normally - each player separately
+                const playersA = rawPlayersA.filter(n => !isWalkoverToken(n));
+                const playersB = rawPlayersB.filter(n => !isWalkoverToken(n));
+                playersA_html = playersA.map(p => `<span class="compact-doubles-player">${escapeHtml(formatPlayerName(p))}</span>`).join('<span class="compact-doubles-separator"> / </span>');
+                playersB_html = playersB.map(p => `<span class="compact-doubles-player">${escapeHtml(formatPlayerName(p))}</span>`).join('<span class="compact-doubles-separator"> / </span>');
+            }
+            
+            const cardClass = isWin ? 'compact-doubles-card compact-doubles-card--win' : 'compact-doubles-card compact-doubles-card--loss';
+            
+            doublesHtml += `<div class="${cardClass}">
+                <div class="compact-doubles-players">
+                    <div class="compact-doubles-team">${playersA_html}</div>
+                    <div class="compact-doubles-score">${scoreA}:${scoreB}</div>
+                    <div class="compact-doubles-team">${playersB_html}</div>
+                </div>
+            </div>`;
+        });
+        doublesHtml += '</div>';
+    }
+    
     // Build table HTML
-    let html = '<div class="compact-match-table-container"><table class="compact-match-table">';
+    let html = '<div class="compact-match-table-container">' + doublesHtml + '<div class="compact-match-table-wrapper"><table class="compact-match-table">';
     
     // Header row with team B players
     html += '<thead><tr><th></th>'; // Empty corner cell
@@ -235,7 +288,7 @@ function buildCompactMatchTable(match) {
         html += '</tr>';
     });
     
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
     return html;
 }
 
