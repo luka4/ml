@@ -2119,7 +2119,37 @@ function renderMatchList(matches, container, appendToProvided, playersData = nul
     const wrapper = appendToProvided ? container : document.createElement('div');
     if (!appendToProvided) wrapper.className = 'round-group';
 
-    Object.values(teamMatches).forEach(match => {
+    // Sort matches: first by group (A before B), then by date (earlier dates first)
+    const sortedMatches = Object.values(teamMatches).sort((a, b) => {
+        // First, sort by group (A before B, then other groups)
+        const groupA = (a.group || '').trim().toUpperCase();
+        const groupB = (b.group || '').trim().toUpperCase();
+        
+        if (groupA !== groupB) {
+            // A comes before B, B comes before anything else
+            if (groupA === 'A') return -1;
+            if (groupB === 'A') return 1;
+            if (groupA === 'B') return -1;
+            if (groupB === 'B') return 1;
+            // For other groups, maintain alphabetical order
+            return groupA.localeCompare(groupB);
+        }
+        
+        // If same group, sort by date (earlier dates first)
+        const dateA = parseMatchDate(a.date);
+        const dateB = parseMatchDate(b.date);
+        
+        if (dateA && dateB) {
+            return dateA.getTime() - dateB.getTime();
+        }
+        // If one has date and other doesn't, date comes first
+        if (dateA && !dateB) return -1;
+        if (!dateA && dateB) return 1;
+        // If neither has date, maintain original order
+        return 0;
+    });
+
+    sortedMatches.forEach(match => {
         const matchRow = document.createElement('div');
         // Add group-B class if group is B (for index.html and results.html)
         const isGroupB = match.group && match.group.trim().toUpperCase() === 'B';
