@@ -18,7 +18,13 @@
         if (userEntry === expectedToken) {
             localStorage.setItem(authKey, "true");
             localStorage.setItem(authExpiryKey, String(nowTs + ttlMs));
+            if (typeof gtag === "function") {
+                gtag("event", "auth_success", { method: "daily_token" });
+            }
         } else {
+            if (typeof gtag === "function") {
+                gtag("event", "auth_failure", { method: "daily_token" });
+            }
             alert("Access Denied.");
             window.location.href = "index.html";
         }
