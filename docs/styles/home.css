@@ -2,7 +2,7 @@
 
 #page-home .container {
   max-width: 1000px;
-  margin: 90px auto 40px auto;
+  margin: 0 auto 40px auto;
 }
 
 /* Disclaimer banner */
@@ -59,6 +59,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 15px;
+  margin-top: 10px;
   margin-bottom: 30px;
 }
 

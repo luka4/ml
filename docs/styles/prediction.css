@@ -1,3 +1,9 @@
+/* Prediction page container - same max-width as home page */
+#page-prediction .container {
+  max-width: 1000px;
+  margin: 0 auto 40px auto;
+}
+
 .page-intro {
   color: var(--color-muted);
   margin: 8px 0 22px;
