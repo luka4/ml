@@ -7561,6 +7561,17 @@ function renderMyTeamPage() {
     const compareSelect = document.getElementById('myTeamCompareInput');
     const clearCompareBtn = document.getElementById('myTeamClearCompareBtn');
     const compareStatus = document.getElementById('myTeamCompareStatus');
+    const scrollToRatingSection = () => {
+        const ratingSection = document.getElementById('section-rating');
+        if (!ratingSection) return;
+        const headerOffset = 80;
+        const elementPosition = ratingSection.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+        });
+    };
 
     // Function to populate compare select (excludes current team)
     const populateCompareSelect = (currentTeamName) => {
@@ -7611,6 +7622,7 @@ function renderMyTeamPage() {
             setTimeout(() => {
                 renderTeamRatingChart(currentTeam, teamPlayers, currentCompareTeam, compareTeamPlayers);
             }, 80);
+            scrollToRatingSection();
         });
     }
 
@@ -7630,6 +7642,9 @@ function renderMyTeamPage() {
                     renderTeamRatingChart(currentTeam, teamPlayers);
                 }, 80);
             }
+
+            // After clearing comparison, jump back to the rating section.
+            scrollToRatingSection();
         });
     }
 

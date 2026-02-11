@@ -117,6 +117,11 @@
   padding: 20px;
 }
 
+/* Make My Team rating chart section taller than the shared default (300px). */
+#page-myteam #section-rating .chart-container {
+  height: 450px;
+}
+
 /* Team Display (non-selectable) */
 .team-display {
   padding: 10px;
@@ -217,6 +222,9 @@
 #myTeamLogo {
   position: relative;
   overflow: hidden;
+  border-radius: 50%;
+  background: white;
+  color: var(--color-primary);
 }
 
 #myTeamLogoImg {
