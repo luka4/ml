@@ -269,19 +269,53 @@ tbody td:nth-child(2) {
   visibility: hidden;
 }
 
-.team-cokery td:nth-child(1),
-.team-cokery td:nth-child(2) {
+/* Highlight player row (from mystats_player_name) */
+#mainTableBody tr.highlight-player td {
+  background-color: rgba(17, 24, 39, 0.15) !important; /* light charcoal - more visible */
+}
+
+#mainTableBody tr.highlight-player td:first-child {
+  border-left: 4px solid var(--color-primary) !important;
+  background-color: rgba(17, 24, 39, 0.2) !important; /* slightly darker for sticky col */
+}
+
+#mainTableBody tr.highlight-player td:nth-child(2) {
+  background-color: rgba(17, 24, 39, 0.2) !important; /* slightly darker for sticky col */
+  font-weight: 700;
+}
+
+/* Highlight teammate rows (from myteam_team_name) */
+#mainTableBody tr.highlight-teammate td {
   background-color: var(--color-info-soft) !important;
 }
 
-.team-astoria td:nth-child(1),
-.team-astoria td:nth-child(2) {
-  background-color: var(--color-warning-soft) !important;
+#mainTableBody tr.highlight-teammate td:nth-child(1),
+#mainTableBody tr.highlight-teammate td:nth-child(2) {
+  background-color: var(--color-info-soft) !important;
 }
 
 #mainTableBody tr:hover td:nth-child(1),
 #mainTableBody tr:hover td:nth-child(2) {
   background-color: var(--color-row-hover) !important;
+}
+
+/* Highlighted rows maintain their color on hover, but slightly darker */
+#mainTableBody tr.highlight-player:hover td {
+  background-color: rgba(17, 24, 39, 0.18) !important;
+}
+
+#mainTableBody tr.highlight-player:hover td:nth-child(1),
+#mainTableBody tr.highlight-player:hover td:nth-child(2) {
+  background-color: rgba(17, 24, 39, 0.22) !important;
+}
+
+#mainTableBody tr.highlight-teammate:hover td {
+  background-color: rgba(29, 78, 216, 0.2) !important; /* slightly darker blue */
+}
+
+#mainTableBody tr.highlight-teammate:hover td:nth-child(1),
+#mainTableBody tr.highlight-teammate:hover td:nth-child(2) {
+  background-color: rgba(29, 78, 216, 0.2) !important;
 }
 
 #mainTableBody tr {
@@ -291,6 +325,15 @@ tbody td:nth-child(2) {
 
 #mainTableBody tr:hover td {
   background-color: var(--color-row-hover);
+}
+
+/* Override hover for highlighted rows */
+#mainTableBody tr.highlight-player:hover td {
+  background-color: rgba(17, 24, 39, 0.18) !important;
+}
+
+#mainTableBody tr.highlight-teammate:hover td {
+  background-color: rgba(29, 78, 216, 0.2) !important;
 }
 
 .rating-low {

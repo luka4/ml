@@ -6,10 +6,17 @@
 const INITIAL_RATING = 100;
 const K_FACTOR_STAGES = {1: 30, 2: 26, 3: 22, 4: 18, 5: 14, default: 10};
 
+// LocalStorage keys
+const MYSTATS_STORAGE_KEY = 'mystats_player_name';
+const MYTEAM_STORAGE_KEY = 'myteam_team_name';
+
 let chartRefs = {};
 
 // Global helper: normalize player name for lookup
 const normalizePlayerKey = (name) => (name || '').trim().toLowerCase();
+
+// Global helper: normalize team name for comparison
+const normalizeTeamName = (name) => (name || '').trim();
 
 // Team logos (used on standings + detail)
 const LOGO_BASE_PATH = 'media/team_logos';
@@ -3164,10 +3171,24 @@ function renderRatingPage() {
     const renderTable = () => {
         tbody.innerHTML = '';
         const display = getDisplayedPlayers();
+        
+        // Get player and team from localStorage for highlighting
+        const savedPlayerName = localStorage.getItem(MYSTATS_STORAGE_KEY);
+        const savedTeamName = localStorage.getItem(MYTEAM_STORAGE_KEY);
+        const savedPlayerKey = savedPlayerName ? normalizePlayerKey(savedPlayerName) : null;
+        const savedTeamNameNormalized = savedTeamName ? normalizeTeamName(savedTeamName) : null;
+        
         display.forEach((p, index) => {
             const tr = document.createElement('tr');
-            // if (p.team === 'COKERY') tr.classList.add('team-cokery');
-            // if (p.team === 'ASTORIAFIT') tr.classList.add('team-astoria');
+            // Highlight player if they match mystats_player_name
+            const playerKey = normalizePlayerKey(p.name);
+            if (savedPlayerKey && playerKey === savedPlayerKey) {
+                tr.classList.add('highlight-player');
+            }
+            // Highlight teammates if they match myteam_team_name (but not the player themselves)
+            else if (savedTeamNameNormalized && p.team && normalizeTeamName(p.team) === savedTeamNameNormalized) {
+                tr.classList.add('highlight-teammate');
+            }
             tr.onclick = () => {
                 if (window.getSelection().toString().length === 0) openPlayerModal(p);
             };
@@ -4583,7 +4604,6 @@ function renderPredictionPage() {
 function renderMyStatsPage() {
     const {players} = processData();
     const playerArr = Object.values(players);
-    const MYSTATS_STORAGE_KEY = 'mystats_player_name';
     const URL_PARAM_NAME = 'player';
 
     // Create player lookup for quick access
@@ -5571,8 +5591,6 @@ function renderMyStatsPage() {
 function renderMyTeamPage() {
     const {players} = processData();
     const playerArr = Object.values(players);
-    const MYTEAM_STORAGE_KEY = 'myteam_team_name';
-    const MYSTATS_STORAGE_KEY = 'mystats_player_name';
     const URL_PARAM_NAME = 'team';
 
     // Create team map
