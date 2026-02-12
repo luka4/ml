@@ -3978,77 +3978,221 @@ function renderRatingPage() {
 // --- TABLE PAGE ---
 function renderTablePage() {
     const {players} = processData();
-    const tables = {};
-
-    // 1. Group Matches
-    matchResults.forEach(m => {
-        const season = m.season || "JESEŇ 2025";
-        const group = m.group || "";
-        const tableKey = `${season}__${group}`;
-
-        if (!tables[tableKey]) {
-            tables[tableKey] = {
-                season: season,
-                group: group,
-                seasonOrder: getSeasonOrder(season),
-                matches: []
-            };
-        }
-        tables[tableKey].matches.push(m);
-
-    });
-
-    // 2. Prepare Container
     const container = document.getElementById('tablesContainer');
-    if (container) container.innerHTML = '';
+    const viewToggle = document.getElementById('tableViewToggle');
+    const viewToggleText = document.getElementById('tableViewToggleText');
+    if (!container) return;
 
-    // 3. Sort Tables (Season DESC, Group ASC)
-    const sortedKeys = Object.keys(tables).sort((a, b) => {
-        const tA = tables[a];
-        const tB = tables[b];
-        if (tA.seasonOrder !== tB.seasonOrder) return tB.seasonOrder - tA.seasonOrder;
-        return tA.group.localeCompare(tB.group);
-    });
+    const normalizeGroupLabel = (group) => String(group || '').trim().toUpperCase().replace(/^SKUPINA\s+/i, '');
+    const parseMergedSeasonConfig = (rawText) => {
+        const raw = String(rawText || '').trim();
+        if (!raw) return [];
+        return raw
+            .split('|')
+            .map(block => block.split(',').map(s => s.trim()).filter(Boolean))
+            .filter(group => group.length >= 2);
+    };
 
-    // 4. Process and Render Each Table
-    sortedKeys.forEach(key => {
-        const {season, group, matches} = tables[key];
-        const teams = {};
-        const teamMatchesArray = [];
+    const loadMergedSeasonConfig = async () => {
+        if (typeof GoogleSheetsLoader === 'undefined') return [];
+        try {
+            const value = await GoogleSheetsLoader.fetchCell({
+                sheetName: 'Config',
+                cell: 'B4',
+                cache: false
+            });
+            return parseMergedSeasonConfig(value);
+        } catch (e) {
+            console.error('Failed to load merged season config:', e);
+            return [];
+        }
+    };
+
+    const buildGroupedTeamMatches = (matches) => {
         const tempMatches = {};
-
-        // Process matches for this table
-        matches.forEach(m => {
-            const key = `${getMatchRoundId(m)}::${m.player_a_team}::${m.player_b_team}`;
-            if (!tempMatches[key]) {
-                tempMatches[key] = {
+        (matches || []).forEach(m => {
+            const matchKey = `${getMatchRoundId(m)}::${m.player_a_team}::${m.player_b_team}`;
+            if (!tempMatches[matchKey]) {
+                tempMatches[matchKey] = {
                     roundName: m.round,
+                    seasonName: m.season || '',
                     teamA: m.player_a_team,
                     teamB: m.player_b_team,
                     scoreA: 0,
                     scoreB: 0,
                     isPlayed: false,
-                    realDate: null
+                    realDate: null,
+                    location: null
                 };
             }
+            if (!tempMatches[matchKey].realDate && m.date) {
+                tempMatches[matchKey].realDate = m.date;
+            }
+            if (!tempMatches[matchKey].location && m.location) {
+                tempMatches[matchKey].location = m.location;
+            }
             if (isPlayedMatch(m)) {
-                const sA = parseInt(m.score_a);
-                const sB = parseInt(m.score_b);
-                if (sA > sB) tempMatches[key].scoreA++;
-                if (sB > sA) tempMatches[key].scoreB++;
-                tempMatches[key].isPlayed = true;
-            } else {
-                if (m.date) tempMatches[key].realDate = m.date;
+                const sA = parseInt(m.score_a, 10);
+                const sB = parseInt(m.score_b, 10);
+                if (sA > sB) tempMatches[matchKey].scoreA++;
+                if (sB > sA) tempMatches[matchKey].scoreB++;
+                tempMatches[matchKey].isPlayed = true;
             }
         });
+        return Object.values(tempMatches);
+    };
 
-        for (const k in tempMatches) teamMatchesArray.push(tempMatches[k]);
+    const findLatestRoundFromMatches = (matches) => {
+        const playedMatches = (matches || []).filter(isPlayedMatch);
+        if (playedMatches.length === 0) return null;
 
-        const initTeam = (n) => {
-            if (!teams[n]) teams[n] = {
-                name: n, matches: 0, wins: 0, draws: 0, losses: 0,
-                scoreFor: 0, scoreAgainst: 0, points: 0, avgRating: 0
-            };
+        const roundsMap = new Map();
+        playedMatches.forEach(m => {
+            const roundId = getMatchRoundId(m);
+            if (!roundsMap.has(roundId)) {
+                roundsMap.set(roundId, {
+                    id: roundId,
+                    name: m.round,
+                    season: m.season,
+                    seasonOrder: getSeasonOrder(m.season),
+                    roundNum: getRoundNumFromStr(m.round)
+                });
+            }
+        });
+        const sortedRounds = Array.from(roundsMap.values()).sort((a, b) => {
+            if (a.seasonOrder !== b.seasonOrder) return b.seasonOrder - a.seasonOrder;
+            return b.roundNum - a.roundNum;
+        });
+        return sortedRounds.length > 0 ? sortedRounds[0] : null;
+    };
+
+    const buildTierMapForMergedTable = (matches, seasonsToMerge) => {
+        const mergedSeasons = (seasonsToMerge || []).filter(Boolean);
+        if (mergedSeasons.length === 0) return {};
+
+        const sortedSeasons = [...mergedSeasons].sort((a, b) => getSeasonOrder(b) - getSeasonOrder(a));
+        const referenceSeason = sortedSeasons[0];
+        const tierMap = {};
+
+        const setTier = (teamName, rawGroup) => {
+            if (!teamName) return;
+            const group = normalizeGroupLabel(rawGroup);
+            if (!group) return;
+            if (!tierMap[teamName] || group.localeCompare(tierMap[teamName], 'sk', { sensitivity: 'base' }) < 0) {
+                tierMap[teamName] = group;
+            }
+        };
+
+        const refSeasonMatches = (matches || []).filter(m => m.season === referenceSeason);
+        refSeasonMatches.forEach(m => {
+            setTier(m.player_a_team, m.group);
+            setTier(m.player_b_team, m.group);
+        });
+
+        // Fallback when reference season has no group labels.
+        if (Object.keys(tierMap).length === 0) {
+            (matches || []).forEach(m => {
+                setTier(m.player_a_team, m.group);
+                setTier(m.player_b_team, m.group);
+            });
+        }
+
+        return tierMap;
+    };
+
+    const buildTableDefinitions = (allMatches, mergeSeasonGroups, mergedViewEnabled) => {
+        const definitions = [];
+        const safeMatches = Array.isArray(allMatches) ? allMatches : [];
+
+        if (mergedViewEnabled) {
+            const claimedSeasons = new Set();
+            (mergeSeasonGroups || []).forEach(group => {
+                const seasons = (group || []).map(s => s.trim()).filter(Boolean).filter(s => !claimedSeasons.has(s));
+                if (seasons.length < 2) return;
+
+                const seasonSet = new Set(seasons);
+                const mergedMatches = safeMatches.filter(m => seasonSet.has(m.season || ''));
+                if (mergedMatches.length === 0) return;
+
+                seasons.forEach(s => claimedSeasons.add(s));
+                const seasonOrders = seasons.map(getSeasonOrder);
+                definitions.push({
+                    type: 'merged',
+                    title: seasons.join(' + '),
+                    sortSeasonOrder: seasonOrders.length ? Math.max(...seasonOrders) : 0,
+                    sortGroup: '',
+                    matches: mergedMatches,
+                    tierMap: buildTierMapForMergedTable(mergedMatches, seasons)
+                });
+            });
+
+            const splitTables = {};
+            safeMatches.forEach(m => {
+                const season = m.season || "JESEŇ 2025";
+                if (claimedSeasons.has(season)) return;
+                const group = m.group || "";
+                const tableKey = `${season}__${group}`;
+                if (!splitTables[tableKey]) {
+                    splitTables[tableKey] = {
+                        type: 'split',
+                        title: `${season}${group ? ' - Skupina ' + group : ''}`,
+                        sortSeasonOrder: getSeasonOrder(season),
+                        sortGroup: String(group || ''),
+                        matches: []
+                    };
+                }
+                splitTables[tableKey].matches.push(m);
+            });
+            definitions.push(...Object.values(splitTables));
+        } else {
+            const splitTables = {};
+            safeMatches.forEach(m => {
+                const season = m.season || "JESEŇ 2025";
+                const group = m.group || "";
+                const tableKey = `${season}__${group}`;
+                if (!splitTables[tableKey]) {
+                    splitTables[tableKey] = {
+                        type: 'split',
+                        title: `${season}${group ? ' - Skupina ' + group : ''}`,
+                        sortSeasonOrder: getSeasonOrder(season),
+                        sortGroup: String(group || ''),
+                        matches: []
+                    };
+                }
+                splitTables[tableKey].matches.push(m);
+            });
+            definitions.push(...Object.values(splitTables));
+        }
+
+        definitions.sort((a, b) => {
+            if (a.sortSeasonOrder !== b.sortSeasonOrder) return b.sortSeasonOrder - a.sortSeasonOrder;
+            return a.sortGroup.localeCompare(b.sortGroup, 'sk', { sensitivity: 'base' });
+        });
+        return definitions;
+    };
+
+    const renderTableBlock = (def) => {
+        const matches = def.matches || [];
+        const teams = {};
+        const teamMatchesArray = buildGroupedTeamMatches(matches);
+        const tierMap = def.tierMap || {};
+        const latestRound = findLatestRoundFromMatches(matches);
+
+        const initTeam = (name) => {
+            if (!name) return;
+            if (!teams[name]) {
+                teams[name] = {
+                    name,
+                    matches: 0,
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    scoreFor: 0,
+                    scoreAgainst: 0,
+                    points: 0,
+                    avgRating: 0
+                };
+            }
         };
         teamMatchesArray.forEach(m => { initTeam(m.teamA); initTeam(m.teamB); });
 
@@ -4061,64 +4205,44 @@ function renderTablePage() {
             teams[m.teamB].scoreFor += m.scoreB;
             teams[m.teamB].scoreAgainst += m.scoreA;
             if (m.scoreA > m.scoreB) {
-                teams[m.teamA].wins++; teams[m.teamA].points += 3;
-                teams[m.teamB].losses++; teams[m.teamB].points += 1;
+                teams[m.teamA].wins++;
+                teams[m.teamA].points += 3;
+                teams[m.teamB].losses++;
+                teams[m.teamB].points += 1;
             } else if (m.scoreB > m.scoreA) {
-                teams[m.teamB].wins++; teams[m.teamB].points += 3;
-                teams[m.teamA].losses++; teams[m.teamA].points += 1;
+                teams[m.teamB].wins++;
+                teams[m.teamB].points += 3;
+                teams[m.teamA].losses++;
+                teams[m.teamA].points += 1;
             } else {
-                teams[m.teamA].draws++; teams[m.teamA].points += 2;
-                teams[m.teamB].draws++; teams[m.teamB].points += 2;
+                teams[m.teamA].draws++;
+                teams[m.teamA].points += 2;
+                teams[m.teamB].draws++;
+                teams[m.teamB].points += 2;
             }
         });
 
-        // Find latest played round in this season
-        const playedMatches = matches.filter(isPlayedMatch);
-        let latestRound = null;
-        if (playedMatches.length > 0) {
-            const roundsMap = new Map();
-            playedMatches.forEach(m => {
-                const roundId = getMatchRoundId(m);
-                if (!roundsMap.has(roundId)) {
-                    const rNum = parseInt((m.round.match(/\d+/) || [0])[0]);
-                    const sOrder = getSeasonOrder(m.season);
-                    roundsMap.set(roundId, {
-                        id: roundId,
-                        name: m.round,
-                        season: m.season,
-                        seasonOrder: sOrder,
-                        roundNum: rNum
-                    });
-                }
-            });
-            const sortedRounds = Array.from(roundsMap.values()).sort((a, b) => {
-                if (a.seasonOrder !== b.seasonOrder) return b.seasonOrder - a.seasonOrder;
-                return b.roundNum - a.roundNum;
-            });
-            latestRound = sortedRounds.length > 0 ? sortedRounds[0] : null;
-        }
-
-        // Calc Avg Rating (using ratings after latest round played in this season)
         Object.values(teams).forEach(t => {
             const teamPlayers = Object.values(players).filter(p => p.team === t.name);
             if (latestRound && teamPlayers.length > 0) {
                 const { activeRating } = calculateTeamRatingsForRound(teamPlayers, latestRound);
                 t.avgRating = activeRating !== null ? activeRating : 0;
             } else {
-                // Fallback to current rating if no rounds played yet
-                const tp = teamPlayers.sort((a, b) => (b.matches + b.dMatches) - (a.matches + a.dMatches)).slice(0, 4);
-                t.avgRating = tp.length > 0 ? tp.reduce((acc, p) => acc + p.rating, 0) / tp.length : 0;
+                const topPlayers = teamPlayers
+                    .sort((a, b) => (b.matches + b.dMatches) - (a.matches + a.dMatches))
+                    .slice(0, 4);
+                t.avgRating = topPlayers.length > 0
+                    ? topPlayers.reduce((acc, p) => acc + p.rating, 0) / topPlayers.length
+                    : 0;
             }
         });
 
-        // Build HTML
         const wrapper = document.createElement('div');
         wrapper.className = 'table-section';
 
-        const titleText = `${season}${group ? ' - Skupina ' + group : ''}`;
         const title = document.createElement('h2');
         title.style.cssText = "color: var(--color-primary); margin: 25px 0 10px 0; padding-left: 5px; border-left: 4px solid var(--color-primary);";
-        title.innerText = titleText;
+        title.innerText = def.title;
         wrapper.appendChild(title);
 
         const tableWrapper = document.createElement('div');
@@ -4131,63 +4255,116 @@ function renderTablePage() {
             </tr>
             </thead>
             <tbody></tbody>`;
-
         const tbody = table.querySelector('tbody');
 
-        // Helper for History (scoped to this table's matches)
-        const getHist = (tn) => {
-            const mm = teamMatchesArray.filter(m => m.teamA === tn || m.teamB === tn);
-            const logoSrc = getTeamLogoSrc(tn);
-            const logoBlock = logoSrc ? `<div class="team-logo-banner"><div class="team-logo-banner-wrapper"><img src="${logoSrc}" alt="${escapeAttr(tn)} logo" class="team-logo-large" loading="lazy"></div></div>` : '';
-            if (mm.length === 0) return `${logoBlock}<div style="padding:15px; text-align:center; color:var(--color-muted-2);">Žiadne zápasy</div>`;
-            let h = `${logoBlock}<div class="history-list">`;
-            mm.forEach(m => {
-                const isHome = m.teamA === tn;
-                let scHtml = '', scClass = '';
+        const getHist = (teamName) => {
+            const teamMatches = teamMatchesArray.filter(m => m.teamA === teamName || m.teamB === teamName);
+            const logoSrc = getTeamLogoSrc(teamName);
+            const logoBlock = logoSrc ? `<div class="team-logo-banner"><div class="team-logo-banner-wrapper"><img src="${logoSrc}" alt="${escapeAttr(teamName)} logo" class="team-logo-large" loading="lazy"></div></div>` : '';
+            if (teamMatches.length === 0) {
+                return `${logoBlock}<div style="padding:15px; text-align:center; color:var(--color-muted-2);">Žiadne zápasy</div>`;
+            }
+            let html = `${logoBlock}<div class="history-list">`;
+            teamMatches.forEach(m => {
+                const isHome = m.teamA === teamName;
+                let scoreHtml = '';
+                let scoreClass = '';
                 if (m.isPlayed) {
-                    scClass = isHome ? (m.scoreA > m.scoreB ? "score-win" : (m.scoreA < m.scoreB ? "score-loss" : "score-draw")) : (m.scoreB > m.scoreA ? "score-win" : (m.scoreB < m.scoreA ? "score-loss" : "score-draw"));
-                    scHtml = `${m.scoreA}:${m.scoreB}`;
+                    scoreClass = isHome
+                        ? (m.scoreA > m.scoreB ? "score-win" : (m.scoreA < m.scoreB ? "score-loss" : "score-draw"))
+                        : (m.scoreB > m.scoreA ? "score-win" : (m.scoreB < m.scoreA ? "score-loss" : "score-draw"));
+                    scoreHtml = `${m.scoreA}:${m.scoreB}`;
                 } else {
-                    scClass = "score-draw";
-                    scHtml = "VS";
+                    scoreClass = "score-draw";
+                    scoreHtml = "VS";
                 }
                 const vsStyle = !m.isPlayed ? 'style="color:var(--color-muted-2);"' : '';
-                h += `<div class="history-row"><div class="hr-date">${m.roundName}</div><div class="hr-match">
-                    <span class="hr-team hr-home ${m.teamA === tn ? "current-team" : "other-team"}">${m.teamA}</span><span class="hr-score ${scClass}" ${vsStyle}>${scHtml}</span><span class="hr-team hr-guest ${m.teamB === tn ? "current-team" : "other-team"}">${m.teamB}</span></div></div>`;
+                const seasonPart = m.seasonName ? `<br><span class="hr-season">${escapeHtml(m.seasonName)}</span>` : '';
+                const locationText = (m.location || '').trim() || 'Nezname miesto';
+                const dateText = m.realDate ? formatDateWithSlovakDay(m.realDate) : 'Neznamy datum';
+                html += `<div class="history-row"><div class="hr-date">${escapeHtml(m.roundName)}${seasonPart}</div><div class="hr-match">
+                    <span class="hr-team hr-home ${m.teamA === teamName ? "current-team" : "other-team"}">${m.teamA}</span><span class="hr-score ${scoreClass}" ${vsStyle}>${scoreHtml}</span><span class="hr-team hr-guest ${m.teamB === teamName ? "current-team" : "other-team"}">${m.teamB}</span></div><div class="hr-meta"><span class="hr-location">${escapeHtml(locationText)}</span><span class="hr-date-right">${escapeHtml(dateText)}</span></div></div>`;
             });
-            return h + `</div>`;
+            return html + `</div>`;
         };
 
-        const hasPodiumData = teamMatchesArray.some(m => m.isPlayed) ||
-            Object.values(teams).some(t => t.points > 0 || t.matches > 0);
+        const hasPodiumData = teamMatchesArray.some(m => m.isPlayed) || Object.values(teams).some(t => t.points > 0 || t.matches > 0);
+        const sortedTeams = Object.values(teams).sort((a, b) => {
+            const tierA = normalizeGroupLabel(tierMap[a.name] || '');
+            const tierB = normalizeGroupLabel(tierMap[b.name] || '');
+            if (tierA || tierB) {
+                if (!tierA) return 1;
+                if (!tierB) return -1;
+                const tierCmp = tierA.localeCompare(tierB, 'sk', { numeric: true, sensitivity: 'base' });
+                if (tierCmp !== 0) return tierCmp;
+            }
+            if (b.points !== a.points) return b.points - a.points;
+            const diffA = a.scoreFor - a.scoreAgainst;
+            const diffB = b.scoreFor - b.scoreAgainst;
+            if (diffB !== diffA) return diffB - diffA;
+            if (b.scoreFor !== a.scoreFor) return b.scoreFor - a.scoreFor;
+            return a.name.localeCompare(b.name, 'sk', { sensitivity: 'base' });
+        });
 
-        Object.values(teams).sort((a, b) => (b.points !== a.points) ? b.points - a.points : (b.scoreFor - b.scoreAgainst) - (a.scoreFor - a.scoreAgainst)).forEach((t, i) => {
+        sortedTeams.forEach((t, i) => {
             const tr = document.createElement('tr');
-
             let podiumClass = '';
             if (hasPodiumData) {
                 if (i === 0) podiumClass = 'gold';
                 else if (i === 1) podiumClass = 'silver';
                 else if (i === 2) podiumClass = 'bronze';
             }
-
             tr.className = `main-row ${podiumClass}`;
             tr.innerHTML = `<td class="col-pos">${i + 1}.</td><td>${t.name} <span class="expand-icon">▼</span></td><td>${t.matches}</td><td>${t.wins}</td><td>${t.draws}</td><td>${t.losses}</td><td class="col-score">${t.scoreFor}:${t.scoreAgainst}</td><td class="col-pts">${t.points}</td><td class="col-avg">${t.avgRating.toFixed(1)}</td>`;
-            const dTr = document.createElement('tr');
-            dTr.className = 'detail-row';
-            dTr.innerHTML = `<td colspan="9" class="detail-cell">${getHist(t.name)}</td>`;
+            const detailsRow = document.createElement('tr');
+            detailsRow.className = 'detail-row';
+            detailsRow.innerHTML = `<td colspan="9" class="detail-cell">${getHist(t.name)}</td>`;
             tr.onclick = () => {
-                const o = dTr.classList.contains('open');
-                dTr.classList.toggle('open', !o);
-                tr.classList.toggle('active', !o);
+                const isOpen = detailsRow.classList.contains('open');
+                detailsRow.classList.toggle('open', !isOpen);
+                tr.classList.toggle('active', !isOpen);
             };
             tbody.appendChild(tr);
-            tbody.appendChild(dTr);
+            tbody.appendChild(detailsRow);
         });
 
         tableWrapper.appendChild(table);
         wrapper.appendChild(tableWrapper);
-        if(container) container.appendChild(wrapper);
+        container.appendChild(wrapper);
+    };
+
+    const viewState = {
+        mergedEnabled: false,
+        mergeSeasonGroups: []
+    };
+
+    const setViewToggleLabel = () => {
+        if (!viewToggleText) return;
+        viewToggleText.textContent = viewState.mergedEnabled ? 'Zlúčené zobrazenie' : 'Rozdelené zobrazenie';
+    };
+
+    const rerender = () => {
+        container.innerHTML = '';
+        const defs = buildTableDefinitions(matchResults, viewState.mergeSeasonGroups, viewState.mergedEnabled);
+        defs.forEach(renderTableBlock);
+    };
+
+    setViewToggleLabel();
+    rerender();
+
+    if (viewToggle && !viewToggle.dataset.bound) {
+        viewToggle.checked = false;
+        viewToggle.addEventListener('change', () => {
+            viewState.mergedEnabled = !!viewToggle.checked;
+            setViewToggleLabel();
+            rerender();
+        });
+        viewToggle.dataset.bound = '1';
+    }
+
+    loadMergedSeasonConfig().then(groups => {
+        viewState.mergeSeasonGroups = groups;
+        rerender();
     });
 }
 

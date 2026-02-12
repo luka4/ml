@@ -36,7 +36,14 @@
 <div id="pageContent">
     <div id="mainNavContainer"></div>
     <div class="container" id="mainContainer">
-        <h2>Tabuľka Ligy</h2>
+        <div class="table-page-header">
+            <h2>Tabuľka Ligy</h2>
+            <label class="match-details-toggle table-view-toggle" title="Prepnúť zobrazenie tabuľky">
+                <input type="checkbox" id="tableViewToggle" aria-label="Prepínač zobrazenia tabuľky">
+                <span class="match-details-toggle__slider"></span>
+                <span class="match-details-toggle__text" id="tableViewToggleText">Rozdelené zobrazenie</span>
+            </label>
+        </div>
         <div id="tablesContainer"></div>
     </div>
 
