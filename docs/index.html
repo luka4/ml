@@ -24,18 +24,7 @@
     <link rel="canonical" href="https://miniliga.online/" />
     <script src="auth.js"></script>
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script>
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        OneSignalDeferred.push(async function(OneSignal) {
-            await OneSignal.init({
-                appId: "91cdf62f-fbb3-406c-b10e-ea632651b4cf",
-                safari_web_id: "web.onesignal.auto...",
-                notifyButton: {
-                    enable: true,
-                },
-            });
-        });
-    </script>
+    <script src="onesignal-init.js" defer></script>
 </head>
 <body id="page-home" class="loading">
 
