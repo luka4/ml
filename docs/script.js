@@ -1403,6 +1403,53 @@ function renderDerivedStats(stats, compareStats = null) {
 // 4. PAGE RENDERERS
 // ============================================================
 
+function initFlipCards(root = document) {
+    const cards = Array.from((root || document).querySelectorAll('[data-flip-card]'));
+    if (!cards.length) return;
+
+    const setFlipped = (card, flipped) => {
+        card.classList.toggle('is-flipped', !!flipped);
+        card.setAttribute('aria-pressed', flipped ? 'true' : 'false');
+        const back = card.querySelector('.stat-face--back');
+        if (back) back.setAttribute('aria-hidden', flipped ? 'false' : 'true');
+    };
+    const closeAll = (except = null) => {
+        cards.forEach(c => { if (c !== except) setFlipped(c, false); });
+    };
+
+    cards.forEach(card => {
+        if (card.dataset.flipBound === '1') return;
+        card.dataset.flipBound = '1';
+
+        const onToggle = () => {
+            const willFlip = !card.classList.contains('is-flipped');
+            closeAll(willFlip ? card : null);
+            setFlipped(card, willFlip);
+        };
+
+        card.addEventListener('click', (e) => {
+            if (e.target && e.target.closest && e.target.closest('a')) return;
+            e.preventDefault();
+            onToggle();
+        }, {passive: false});
+
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onToggle();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeAll();
+            }
+        }, {passive: false});
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('[data-flip-card]')) return;
+        closeAll();
+    }, {passive: true});
+}
+
 // --- HOME PAGE ---
 function renderHomePage() {
     // Load disclaimer from Google Sheets (Config!B3)
@@ -1485,54 +1532,7 @@ function renderHomePage() {
         setsBack.innerText = `Ak má jeden set v priemere ~18 lôpt, tak sa odohralo približne ${points} lôpt.`;
     }
 
-    // Home "stat cards" flip interaction (tap/click + keyboard)
-    // Implemented here so it only runs on the home page.
-    (() => {
-        const cards = Array.from(document.querySelectorAll('[data-flip-card]'));
-        if (!cards.length) return;
-        const setFlipped = (card, flipped) => {
-            card.classList.toggle('is-flipped', !!flipped);
-            card.setAttribute('aria-pressed', flipped ? 'true' : 'false');
-            const back = card.querySelector('.stat-face--back');
-            if (back) back.setAttribute('aria-hidden', flipped ? 'false' : 'true');
-        };
-        const closeAll = (except = null) => {
-            cards.forEach(c => { if (c !== except) setFlipped(c, false); });
-        };
-        cards.forEach(card => {
-            if (card.dataset.flipBound === '1') return;
-            card.dataset.flipBound = '1';
-
-            const onToggle = () => {
-                const willFlip = !card.classList.contains('is-flipped');
-                closeAll(willFlip ? card : null);
-                setFlipped(card, willFlip);
-            };
-
-            card.addEventListener('click', (e) => {
-                // Let links on the back side work normally
-                if (e.target && e.target.closest && e.target.closest('a')) return;
-                e.preventDefault();
-                onToggle();
-            }, {passive: false});
-
-            card.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onToggle();
-                } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    closeAll();
-                }
-            }, {passive: false});
-        });
-
-        // Click outside closes flipped cards
-        document.addEventListener('click', (e) => {
-            if (e.target && e.target.closest && e.target.closest('[data-flip-card]')) return;
-            closeAll();
-        }, {passive: true, once: true});
-    })();
+    initFlipCards(document.getElementById('mainContainer') || document);
 
     const currentTitleText = currentRoundId ? (() => {
         // Prefer the round name from any match in that round; fall back to legacy string.
@@ -1638,6 +1638,315 @@ function renderHomePage() {
     } else {
         upcomingContainer.style.display = 'none';
     }
+}
+
+// --- HIGHLIGHTS PAGE ---
+function renderHighlightsPage() {
+    const playedMatches = matchResults.filter(isPlayedMatch);
+    const lastPlayedMatch = playedMatches.length > 0 ? playedMatches[playedMatches.length - 1] : null;
+    const latestRoundId = lastPlayedMatch ? getMatchRoundId(lastPlayedMatch) : null;
+    const thisWeekRoundId = getThisWeekRoundId(matchResults, new Date());
+    const defaultRoundId = thisWeekRoundId || latestRoundId;
+
+    // Dropdown should include only rounds with at least one played match.
+    const roundsIndex = buildRoundsIndex(playedMatches || []);
+    const allRounds = Object.values(roundsIndex).sort((a, b) => {
+        if (a.seasonOrder !== b.seasonOrder) return b.seasonOrder - a.seasonOrder;
+        return b.roundNum - a.roundNum;
+    });
+
+    const roundSelect = document.getElementById('highlightsRoundSelect');
+    const titleEl = document.getElementById('highlightsRoundTitle');
+    const latestRoundContainer = document.getElementById('latestRoundContainer');
+    const topMatchesWeekContainer = document.getElementById('topMatchesWeekContainer');
+    const gainList = document.getElementById('topGainersList');
+    const upsetDiv = document.getElementById('upsetContainer');
+    const prevRoundBtn = document.getElementById('highlightsPrevRoundBtn');
+    const nextRoundBtn = document.getElementById('highlightsNextRoundBtn');
+    const prevButtons = Array.from(document.querySelectorAll('.js-highlights-prev'));
+    const nextButtons = Array.from(document.querySelectorAll('.js-highlights-next'));
+    const topMatchCardBack = document.getElementById('topMatchCardBack');
+    const topUpsetCardBack = document.getElementById('topUpsetCardBack');
+    const topPerformanceCardBack = document.getElementById('topPerformanceCardBack');
+    const teamOfWeekCardBack = document.getElementById('teamOfWeekCardBack');
+    if (!roundSelect || !titleEl || !latestRoundContainer || !topMatchesWeekContainer || !gainList || !upsetDiv || !prevRoundBtn || !nextRoundBtn || !prevButtons.length || !nextButtons.length || !topMatchCardBack || !topUpsetCardBack || !topPerformanceCardBack || !teamOfWeekCardBack) return;
+
+    const getRoundFromURL = () => {
+        try {
+            const params = new URLSearchParams(window.location.search || '');
+            return params.get('round');
+        } catch {
+            return null;
+        }
+    };
+
+    const updateURLWithRound = (roundId) => {
+        try {
+            const url = new URL(window.location.href);
+            if (roundId) url.searchParams.set('round', roundId);
+            else url.searchParams.delete('round');
+            const next = `${url.pathname}${url.search}${url.hash}`;
+            window.history.replaceState({}, '', next);
+        } catch (e) {
+            console.warn('Unable to update URL round param:', e);
+        }
+    };
+
+    const setEmptyStateHtml = (message) => `<div class="highlights-empty-state">${message}</div>`;
+    const isDoublesGame = (g) => g && (g.doubles === true || g.doubles === 'true');
+    const splitPlayers = (raw) => (raw || '').split('/').map(n => n.trim()).filter(n => n && !isWalkoverToken(n));
+    const getWeightedTeamRating = (fixtureGames, teamName, playersData, roundName, seasonName) => {
+        let weightedSum = 0;
+        let totalWeight = 0;
+        fixtureGames.forEach(g => {
+            const weight = isDoublesGame(g) ? 0.5 : 1;
+            const names = g.player_a_team === teamName ? splitPlayers(g.player_a) : (g.player_b_team === teamName ? splitPlayers(g.player_b) : []);
+            names.forEach(name => {
+                const rating = getPlayerRatingBeforeMatch(name, roundName, seasonName, playersData);
+                weightedSum += rating * weight;
+                totalWeight += weight;
+            });
+        });
+        return totalWeight > 0 ? (weightedSum / totalWeight) : 0;
+    };
+    const updateRoundNavButtons = (roundId) => {
+        const idx = allRounds.findIndex(r => r.id === roundId);
+        if (idx < 0) {
+            prevButtons.forEach(btn => { btn.disabled = true; });
+            nextButtons.forEach(btn => { btn.disabled = true; });
+            return;
+        }
+        // allRounds are sorted newest -> oldest
+        const disablePrev = idx >= allRounds.length - 1; // older
+        const disableNext = idx <= 0; // newer
+        prevButtons.forEach(btn => { btn.disabled = disablePrev; });
+        nextButtons.forEach(btn => { btn.disabled = disableNext; });
+    };
+
+    roundSelect.innerHTML = '';
+    allRounds.forEach(round => {
+        const option = document.createElement('option');
+        option.value = round.id;
+        option.textContent = `${round.name}${round.season ? ` (${round.season})` : ''}`;
+        roundSelect.appendChild(option);
+    });
+
+    const renderRoundHighlights = (roundId) => {
+        latestRoundContainer.innerHTML = '';
+        topMatchesWeekContainer.innerHTML = '';
+        gainList.innerHTML = '';
+        upsetDiv.innerHTML = '';
+        const effectiveRoundId = (roundId && roundsIndex[roundId]) ? roundId : null;
+        updateURLWithRound(effectiveRoundId);
+
+        if (!effectiveRoundId) {
+            titleEl.innerText = 'Aktuálny týždeň';
+            topMatchCardBack.innerHTML = 'V tomto týždni nie je dostupná dvojhra.';
+            topUpsetCardBack.innerHTML = 'V tomto týždni nie je dostupné prekvapenie.';
+            topPerformanceCardBack.innerHTML = 'V tomto týždni nie je dostupný top výkon.';
+            teamOfWeekCardBack.innerHTML = 'V tomto týždni nie je dostupný tím týždňa.';
+            topMatchesWeekContainer.innerHTML = setEmptyStateHtml('V tomto týždni nie sú dostupné odohrané dvojhry.');
+            gainList.innerHTML = `<li class="highlights-empty-state">V tomto kole zatiaľ nikto nezískal kladný rating.</li>`;
+            upsetDiv.innerHTML = setEmptyStateHtml('V tomto kole zatiaľ nie sú zaznamenané prekvapenia.');
+            updateRoundNavButtons(null);
+            return;
+        }
+
+        const selectedRoundMatches = matchResults.filter(m => getMatchRoundId(m) === effectiveRoundId);
+        const roundRef = selectedRoundMatches[0] || roundsIndex[effectiveRoundId]?.refMatch;
+        const roundName = roundRef ? `${roundRef.round}${roundRef.season ? ` (${roundRef.season})` : ''}` : effectiveRoundId;
+        titleEl.innerText = `Aktuálny týždeň: ${roundName}`;
+
+        const {players, upsetsList} = processData(effectiveRoundId);
+        const playerArr = Object.values(players);
+        const teamMap = new Map();
+        playerArr.forEach(p => {
+            if (p.team && p.team !== 'N/A') {
+                if (!teamMap.has(p.team)) teamMap.set(p.team, []);
+                teamMap.get(p.team).push(p);
+            }
+        });
+        teamMap.forEach((list, key) => teamMap.set(key, sortRoster(list)));
+
+        if (selectedRoundMatches.length > 0) {
+            renderMatchList(selectedRoundMatches, latestRoundContainer, false, players, teamMap);
+        } else {
+            latestRoundContainer.innerHTML = setEmptyStateHtml('V tomto kole zatiaľ nie sú dostupné zápasy.');
+        }
+
+        const playedSingles = selectedRoundMatches.filter(g => {
+            if (!isPlayedMatch(g) || isDoublesGame(g)) return false;
+            const pA = (g.player_a || '').trim();
+            const pB = (g.player_b || '').trim();
+            if (!pA || !pB || isWalkoverToken(pA) || isWalkoverToken(pB)) return false;
+            return true;
+        });
+
+        const rankedSingles = playedSingles.map(g => {
+            const ratingA = getPlayerRatingBeforeMatch((g.player_a || '').trim(), g.round, g.season, players);
+            const ratingB = getPlayerRatingBeforeMatch((g.player_b || '').trim(), g.round, g.season, players);
+            return { match: g, avgRating: (ratingA + ratingB) / 2, ratingA, ratingB };
+        }).sort((a, b) => b.avgRating - a.avgRating);
+
+        const topSingles = rankedSingles.slice(0, 5);
+        if (topSingles.length > 0) {
+            let html = '';
+            topSingles.forEach((item, idx) => {
+                const m = item.match;
+                html += `<div class="upset-card top-match-card">
+                    <div class="upset-label">#${idx + 1} dvojhra kola</div>
+                    <div class="upset-match"><div class="upset-player">${m.player_a}<div class="upset-team">${m.player_a_team || 'N/A'}</div><div class="highlights-player-rating">Rating: ${item.ratingA.toFixed(1)}</div></div>
+                    <div class="upset-score">${m.score_a}:${m.score_b}</div>
+                    <div class="upset-player">${m.player_b}<div class="upset-team">${m.player_b_team || 'N/A'}</div><div class="highlights-player-rating">Rating: ${item.ratingB.toFixed(1)}</div></div></div>
+                    <div class="highlights-submeta">Priemerný rating pred zápasom: ${item.avgRating.toFixed(1)}</div>
+                </div>`;
+            });
+            topMatchesWeekContainer.innerHTML = html;
+        } else {
+            topMatchesWeekContainer.innerHTML = setEmptyStateHtml('V tomto kole nie sú odohrané dvojhry.');
+        }
+
+        const topMatch = topSingles[0] || null;
+        if (topMatch) {
+            const m = topMatch.match;
+            topMatchCardBack.innerHTML = `${m.player_a} (${m.player_a_team || 'N/A'}) vs ${m.player_b} (${m.player_b_team || 'N/A'})<br>Výsledok: ${m.score_a}:${m.score_b}`;
+        } else {
+            topMatchCardBack.innerHTML = 'V tomto kole nie je odohraná žiadna dvojhra.';
+        }
+
+        const topPerformers = Object.values(players).filter(p => p.roundGain > 0).sort((a, b) => b.roundGain - a.roundGain).slice(0, 10);
+        if (topPerformers.length === 0) {
+            gainList.innerHTML = `<li class="highlights-empty-state">V tomto kole zatiaľ nikto nezískal kladný rating.</li>`;
+            topPerformanceCardBack.innerHTML = 'V tomto kole zatiaľ nikto nezískal kladný rating.';
+        } else {
+            topPerformers.forEach((p, index) => {
+                const li = document.createElement('li');
+                li.className = 'top-player-row';
+                li.innerHTML = `<div class="tp-rank">${index + 1}</div><div class="tp-name">${p.name} <span class="tp-team">(${p.team})</span></div><div class="tp-gain">+${p.roundGain.toFixed(1)}</div>`;
+                gainList.appendChild(li);
+            });
+            const tp = topPerformers[0];
+            topPerformanceCardBack.innerHTML = `${tp.name} (${tp.team})<br>Zisk ratingu: +${tp.roundGain.toFixed(1)}`;
+        }
+
+        const sortedUpsets = [...upsetsList].sort((a, b) => b.diff - a.diff);
+        if (sortedUpsets.length > 0) {
+            let html = '';
+            sortedUpsets.slice(0, 5).forEach(u => {
+                html += `<div class="upset-card"><div class="upset-label">(Rating rozdiel ${Math.round(u.diff)})</div>
+                    <div class="upset-match"><div class="upset-player">${u.winner}<div class="upset-team">${u.wTeam}</div><span class="upset-rating">${u.wRate.toFixed(0)}</span></div>
+                    <div class="upset-score">${u.score}</div>
+                    <div class="upset-player">${u.loser}<div class="upset-team">${u.lTeam}</div><span class="upset-rating">${u.lRate.toFixed(0)}</span></div></div></div>`;
+            });
+            upsetDiv.innerHTML = html;
+            const tu = sortedUpsets[0];
+            topUpsetCardBack.innerHTML = `${tu.winner} (${tu.wTeam}) vs ${tu.loser} (${tu.lTeam})<br>Výsledok: ${tu.score}`;
+        } else {
+            upsetDiv.innerHTML = setEmptyStateHtml('V tomto kole zatiaľ nie sú zaznamenané prekvapenia.');
+            topUpsetCardBack.innerHTML = 'V tomto kole zatiaľ nebolo zaznamenané prekvapenie.';
+        }
+
+        const fixtures = {};
+        selectedRoundMatches.forEach(g => {
+            const key = `${g.player_a_team || ''}::${g.player_b_team || ''}`;
+            if (!fixtures[key]) {
+                fixtures[key] = {
+                    teamA: g.player_a_team || 'N/A',
+                    teamB: g.player_b_team || 'N/A',
+                    round: g.round,
+                    season: g.season,
+                    games: []
+                };
+            }
+            fixtures[key].games.push(g);
+        });
+
+        const teamCandidates = [];
+        Object.values(fixtures).forEach(fx => {
+            const fxPlayed = fx.games.filter(isPlayedMatch);
+            if (!fxPlayed.length) return;
+
+            let actualA = 0;
+            let actualB = 0;
+            fxPlayed.forEach(g => {
+                const sA = parseInt(g.score_a, 10);
+                const sB = parseInt(g.score_b, 10);
+                if (Number.isNaN(sA) || Number.isNaN(sB)) return;
+                if (sA > sB) actualA++;
+                else if (sB > sA) actualB++;
+            });
+
+            const ratingA = getWeightedTeamRating(fxPlayed, fx.teamA, players, fx.round, fx.season);
+            const ratingB = getWeightedTeamRating(fxPlayed, fx.teamB, players, fx.round, fx.season);
+            if (ratingA <= 0 || ratingB <= 0) return;
+
+            const totalGames = actualA + actualB;
+            if (totalGames <= 0) return;
+            const predA = Math.round(totalGames * winProb(ratingA, ratingB));
+            const predB = totalGames - predA;
+
+            teamCandidates.push({
+                team: fx.teamA,
+                opponent: fx.teamB,
+                over: actualA - predA,
+                priority: (predA < predB) && (actualA >= actualB),
+                actual: `${actualA}:${actualB}`,
+                predicted: `${predA}:${predB}`
+            });
+            teamCandidates.push({
+                team: fx.teamB,
+                opponent: fx.teamA,
+                over: actualB - predB,
+                priority: (predB < predA) && (actualB >= actualA),
+                actual: `${actualB}:${actualA}`,
+                predicted: `${predB}:${predA}`
+            });
+        });
+
+        const bestTeam = teamCandidates.sort((a, b) => {
+            if ((b.priority ? 1 : 0) !== (a.priority ? 1 : 0)) return (b.priority ? 1 : 0) - (a.priority ? 1 : 0);
+            if (b.over !== a.over) return b.over - a.over;
+            return a.team.localeCompare(b.team, 'sk', {sensitivity: 'base'});
+        })[0];
+        if (bestTeam && bestTeam.over > 0) {
+            teamOfWeekCardBack.innerHTML = `${bestTeam.team}<br>Proti: ${bestTeam.opponent}<br>Skóre: ${bestTeam.actual}<br>Predikcia: ${bestTeam.predicted}`;
+        } else {
+            teamOfWeekCardBack.innerHTML = 'V tomto kole nebol zaznamenaný jednoznačný tím týždňa.';
+        }
+        updateRoundNavButtons(effectiveRoundId);
+    };
+
+    const roundFromURL = getRoundFromURL();
+    const initialRoundId = (roundFromURL && roundsIndex[roundFromURL])
+        ? roundFromURL
+        : ((defaultRoundId && roundsIndex[defaultRoundId]) ? defaultRoundId : (allRounds[0]?.id || null));
+    if (initialRoundId) roundSelect.value = initialRoundId;
+    renderRoundHighlights(initialRoundId);
+    initFlipCards(document.getElementById('mainContainer') || document);
+
+    roundSelect.addEventListener('change', () => {
+        renderRoundHighlights(roundSelect.value || null);
+    });
+    prevButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = allRounds.findIndex(r => r.id === roundSelect.value);
+            if (idx >= 0 && idx < allRounds.length - 1) {
+                const nextId = allRounds[idx + 1].id;
+                roundSelect.value = nextId;
+                renderRoundHighlights(nextId);
+            }
+        });
+    });
+    nextButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = allRounds.findIndex(r => r.id === roundSelect.value);
+            if (idx > 0) {
+                const nextId = allRounds[idx - 1].id;
+                roundSelect.value = nextId;
+                renderRoundHighlights(nextId);
+            }
+        });
+    });
 }
 
 // --- SCHEDULE PAGE ---
@@ -7932,6 +8241,7 @@ function renderNavigation() {
         { url: 'prediction.html', text: 'Predikcia' },
         { url: 'mystats.html', text: 'Moje Štatistiky' },
         { url: 'myteam.html', text: 'Môj Tím' },
+        { url: 'highlights.html', text: 'Zaujímavosti' },
     ];
 
     // Mobile menu includes Home as first item
@@ -8058,6 +8368,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         else if (id === 'page-prediction') renderPredictionPage();
         else if (id === 'page-mystats') renderMyStatsPage();
         else if (id === 'page-myteam') renderMyTeamPage();
+        else if (id === 'page-highlights') renderHighlightsPage();
         hideLoader();
     });
 });

@@ -1,6 +1,7 @@
 /* Home page (index.html) */
 
-#page-home .container {
+#page-home .container,
+#page-highlights .container {
   max-width: 1000px;
   margin: 0 auto 40px auto;
 }
@@ -34,7 +35,9 @@
 }
 
 #page-home #mainContainer h1,
-#page-home #mainContainer h2 {
+#page-home #mainContainer h2,
+#page-highlights #mainContainer h1,
+#page-highlights #mainContainer h2 {
   text-align: center;
   color: var(--color-text);
   margin: 20px 0;
@@ -42,7 +45,8 @@
   letter-spacing: 1px;
 }
 
-#page-home #mainContainer h2 {
+#page-home #mainContainer h2,
+#page-highlights #mainContainer h2 {
   font-size: 1.4em;
   margin-top: 40px;
   border-bottom: 2px solid var(--color-primary);
@@ -214,9 +218,145 @@
 }
 
 /* Home uses primary-colored round headers */
-#page-home .round-header {
+#page-home .round-header,
+#page-highlights .round-header {
   background: var(--color-primary);
   color: var(--color-text-inverse);
+}
+
+.highlights-filter-section {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.highlights-filter-section label {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.highlights-filter-section select {
+  min-width: 260px;
+  max-width: 420px;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.98rem;
+}
+
+.highlights-filter-section select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.highlights-intro {
+  margin: 14px auto 10px auto;
+  max-width: 740px;
+  text-align: center;
+  color: #111111;
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.highlights-filter-sticky {
+  position: static;
+}
+
+.highlights-cards-grid {
+  margin-top: 12px;
+}
+
+.highlights-card-title {
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.highlights-card-hint {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  text-align: center;
+}
+
+#page-highlights .stat-card--rounds { --card-a: #0f766e; --card-b: #0ea5e9; }
+#page-highlights .stat-card--teams  { --card-a: #b45309; --card-b: #ef4444; }
+#page-highlights .stat-card--matches{ --card-a: #6d28d9; --card-b: #2563eb; }
+#page-highlights .stat-card--sets   { --card-a: #0f766e; --card-b: #16a34a; }
+
+.top-match-card .upset-label {
+  color: var(--color-primary);
+}
+
+.highlights-submeta {
+  margin-top: 10px;
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.highlights-player-rating {
+  font-size: 0.72rem;
+  color: var(--color-muted-2);
+  margin-top: 2px;
+}
+
+.highlights-empty-state {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  text-align: center;
+  color: var(--color-muted);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  list-style: none;
+}
+
+.highlights-bottom-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.highlights-nav-btn {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 700;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.highlights-nav-btn:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  border-color: var(--color-primary);
+}
+
+.highlights-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .top-players-list {
@@ -394,6 +534,28 @@
 @media screen and (max-width: 600px) {
   .stats-grid {
     grid-template-columns: 1fr 1fr;
+  }
+  .highlights-filter-sticky {
+    position: sticky;
+    top: calc(var(--header-offset, 0px) + 6px);
+    z-index: 15;
+    background: var(--color-surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  .highlights-filter-section {
+    margin-top: 0;
+  }
+  .highlights-filter-section select {
+    min-width: 0;
+  }
+  .highlights-card-title {
+    font-size: 0.95rem;
+  }
+  .highlights-card-hint {
+    font-size: 0.55rem;
   }
   .upset-match {
     gap: 5px;
