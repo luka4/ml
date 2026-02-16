@@ -14,24 +14,39 @@ var matchResults = window.matchResults = [];
   const RESULTS_SHEET_NAME = 'Results';
   const RESULTS_QUERY = 'SELECT P'; // Fetch only column P
 
+  function is4LligaEnabled() {
+    return localStorage.getItem('show_4_lliga') === 'true';
+  }
+
   async function loadStaticMatches() {
     try {
-      const showOldSeasons = localStorage.getItem('show_old_seasons') === 'true';
+      const showOldSeasons =
+          localStorage.getItem('show_old_seasons') ===
+          'true';
+      const show4Lliga = is4LligaEnabled();
       let allMatches = [];
-      
-      // If show_old_seasons is enabled, load the old season file first
-      if (showOldSeasons) {
+      const mergeSeasonMatches = async (url, { replace = false } = {}) => {
         try {
-          const oldSeasonRes = await fetch('data/jar2024_5kolo+.json', { cache: 'force-cache' });
-          if (oldSeasonRes.ok) {
-            const oldSeasonData = await oldSeasonRes.json();
-            if (Array.isArray(oldSeasonData)) {
-              allMatches = [...oldSeasonData];
-            }
-          }
+          const response = await fetch(url, { cache: 'force-cache' });
+          if (!response.ok) return;
+          const seasonData = await response.json();
+          if (!Array.isArray(seasonData)) return;
+          allMatches = replace ? [...seasonData] : [...allMatches, ...seasonData];
         } catch (e) {
           console.error('Error loading old season matches:', e);
         }
+      };
+      
+      // show_4_lliga is exclusive mode: only these 2 season files are loaded.
+      if (show4Lliga) {
+        await mergeSeasonMatches('data/4l2024_2025.json', { replace: true });
+        await mergeSeasonMatches('data/4l2025_2026.json');
+        return allMatches;
+      }
+
+      // If show_old_seasons is enabled, load the old season file first
+      if (showOldSeasons) {
+        await mergeSeasonMatches('data/4l2024_2025.json', { replace: true });
       }
       
       // Then load the current matches.json
@@ -78,6 +93,13 @@ var matchResults = window.matchResults = [];
   }
 
   async function loadMatchResults() {
+    const show4Lliga = is4LligaEnabled();
+    if (show4Lliga) {
+      matchResults = await loadStaticMatches();
+      window.matchResults = matchResults;
+      return matchResults;
+    }
+
     const [staticMatches, dynamicMatches] = await Promise.all([
       loadStaticMatches(),
       loadDynamicMatches(),

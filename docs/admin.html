@@ -180,6 +180,10 @@
                         <input type="checkbox" id="showOldSeasons" name="showOldSeasons">
                         <label for="showOldSeasons" class="form-label">Zobraziť staré sezóny (jar2024_5kolo+)</label>
                     </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="show4Lliga" name="show4Lliga">
+                        <label for="show4Lliga" class="form-label">Show 4 lliga</label>
+                    </div>
                     <button type="submit" class="btn btn-primary">Uložiť nastavenia</button>
                     <div id="settingsStatus" class="status-text"></div>
                 </form>
@@ -259,6 +263,7 @@
             scheduleContainer: document.getElementById('scheduleContainer'),
             settingsForm: document.getElementById('settingsForm'),
             showOldSeasons: document.getElementById('showOldSeasons'),
+            show4Lliga: document.getElementById('show4Lliga'),
             settingsStatus: document.getElementById('settingsStatus'),
             ratingSimForm: document.getElementById('ratingSimForm'),
             ratingSimResult: document.getElementById('ratingSimResult')
@@ -645,18 +650,25 @@
 
         // --- SETTINGS ---
         const SHOW_OLD_SEASONS_KEY = 'show_old_seasons';
+        const SHOW_4_LLIGA_KEY = 'show_4_lliga';
         
         function loadSettings() {
             const showOldSeasons = localStorage.getItem(SHOW_OLD_SEASONS_KEY) === 'true';
+            const show4Lliga = localStorage.getItem(SHOW_4_LLIGA_KEY) === 'true';
             if (DOM.showOldSeasons) {
                 DOM.showOldSeasons.checked = showOldSeasons;
+            }
+            if (DOM.show4Lliga) {
+                DOM.show4Lliga.checked = show4Lliga;
             }
         }
         
         DOM.settingsForm.onsubmit = (e) => {
             e.preventDefault();
             const showOldSeasons = DOM.showOldSeasons.checked;
+            const show4Lliga = DOM.show4Lliga.checked;
             localStorage.setItem(SHOW_OLD_SEASONS_KEY, showOldSeasons.toString());
+            localStorage.setItem(SHOW_4_LLIGA_KEY, show4Lliga.toString());
             showStatus(DOM.settingsStatus, 'Nastavenia uložené', 'success');
         };
 

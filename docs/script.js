@@ -4,6 +4,7 @@
 // 1. GLOBAL CONSTANTS & CONFIG
 // ============================================================
 const INITIAL_RATING = 100;
+const INITIAL_RATING_4_LIGA = 150;
 const K_FACTOR_STAGES = {1: 30, 2: 26, 3: 22, 4: 18, 5: 14, default: 10};
 
 // LocalStorage keys
@@ -705,18 +706,20 @@ function processData(currentRoundIdOverride = null) {
     // Otherwise fall back to latestRoundId
     const effectiveRoundId = currentRoundIdOverride || latestRoundId;
 
-    const initPlayer = (nameRaw, teamName) => {
+    const initPlayer = (nameRaw, teamName, matchGroup = '') => {
         const name = nameRaw.trim();
         // Skip creating player for WO
         if (name === 'WO') return null;
 
         if (!players[name]) {
+            const is4Liga = String(matchGroup || '').trim().toLowerCase() === '4 liga';
+            const initialRating = is4Liga ? INITIAL_RATING_4_LIGA : INITIAL_RATING;
             players[name] = {
-                name: name, rating: INITIAL_RATING,
+                name: name, rating: initialRating,
                 matches: 0, wins: 0, losses: 0,
                 setsWin: 0, setsLose: 0,
                 dMatches: 0, dWins: 0, dLosses: 0, dSetsWin: 0, dSetsLose: 0,
-                maxRating: INITIAL_RATING, minRating: INITIAL_RATING,
+                maxRating: initialRating, minRating: initialRating,
                 team: teamName || 'N/A', lastPlayed: 'N/A', roundGain: 0,
                 bestWinOpponent: null, bestWinRating: -Infinity,
                 worstLossOpponent: null, worstLossRating: Infinity,
@@ -742,8 +745,8 @@ function processData(currentRoundIdOverride = null) {
         // If any player is WO, do not process for ratings
         if (pNamesA.includes('WO') || pNamesB.includes('WO')) return;
 
-        pNamesA.forEach(n => initPlayer(n, match.player_a_team));
-        pNamesB.forEach(n => initPlayer(n, match.player_b_team));
+        pNamesA.forEach(n => initPlayer(n, match.player_a_team, match.group));
+        pNamesB.forEach(n => initPlayer(n, match.player_b_team, match.group));
 
         const getR = (name) => players[name].rating;
 
