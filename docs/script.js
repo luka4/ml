@@ -347,14 +347,13 @@ function getPlayerRatingBeforeMatch(playerName, matchRound, matchSeason, players
     const player = players[playerName];
     if (!player) return INITIAL_RATING;
 
-    const roundNum = parseInt((matchRound.match(/\d+/) || [0])[0]);
+    const roundOrder = getRoundOrderFromStr(matchRound);
     const seasonOrder = getSeasonOrder(matchSeason);
+    const targetRoundId = `${matchSeason || 'N/A'}__${matchRound || ''}`;
 
     // Find matches in this round
     const matchesInRound = player.matchDetails.filter(md => {
-        const mdSeasonOrder = getSeasonOrder(md.season);
-        const mdRoundNum = getRoundNumFromStr(md.round);
-        return mdSeasonOrder === seasonOrder && mdRoundNum === roundNum;
+        return `${md.season || 'N/A'}__${md.round || ''}` === targetRoundId;
     });
 
     if (matchesInRound.length > 0) {
@@ -366,7 +365,6 @@ function getPlayerRatingBeforeMatch(playerName, matchRound, matchSeason, players
     }
 
     // If not found in matchDetails, try to use history
-    const targetPrefix = `${seasonOrder}-${String(roundNum).padStart(2, '0')}`;
     const historyKeys = Object.keys(player.history || {}).sort();
     for (let i = historyKeys.length - 1; i >= 0; i--) {
         const key = historyKeys[i];
@@ -374,9 +372,9 @@ function getPlayerRatingBeforeMatch(playerName, matchRound, matchSeason, players
         if (keyParts.length < 1) continue;
         const keyPrefix = keyParts[0];
         const keySeasonOrder = parseInt(keyPrefix.split('-')[0]) || 0;
-        const keyRoundNum = parseInt(keyPrefix.split('-')[1]) || 0;
+        const keyRoundOrder = parseInt(keyPrefix.split('-')[1]) || 0;
         
-        if (keySeasonOrder < seasonOrder || (keySeasonOrder === seasonOrder && keyRoundNum < roundNum)) {
+        if (keySeasonOrder < seasonOrder || (keySeasonOrder === seasonOrder && keyRoundOrder < roundOrder)) {
             return player.history[key];
         }
     }
@@ -390,13 +388,13 @@ function getPlayerMatchesBeforeMatch(playerName, matchRound, matchSeason, player
     const player = players[playerName];
     if (!player) return 0;
 
-    const roundNum = parseInt((matchRound.match(/\d+/) || [0])[0]);
+    const roundOrder = getRoundOrderFromStr(matchRound);
     const seasonOrder = getSeasonOrder(matchSeason);
 
     return player.matchDetails.filter(md => {
         const mdSeasonOrder = getSeasonOrder(md.season);
-        const mdRoundNum = getRoundNumFromStr(md.round);
-        return mdSeasonOrder < seasonOrder || (mdSeasonOrder === seasonOrder && mdRoundNum < roundNum);
+        const mdRoundOrder = getRoundOrderFromStr(md.round);
+        return mdSeasonOrder < seasonOrder || (mdSeasonOrder === seasonOrder && mdRoundOrder < roundOrder);
     }).length;
 }
 
@@ -546,12 +544,27 @@ function getRoundNumFromStr(roundStr) {
     return m ? parseInt(m[0], 10) : 0;
 }
 
+// Sorting helper that preserves decimal rounds (e.g. "6.5 kolo").
+function getRoundSortValueFromStr(roundStr) {
+    const s = String(roundStr || '');
+    const m = s.match(/\d+(?:[.,]\d+)?/);
+    return m ? parseFloat(m[0].replace(',', '.')) : 0;
+}
+
+// Stable sortable integer for round ordering/history keys (e.g. 6 -> 600, 6.5 -> 650).
+function getRoundOrderFromStr(roundStr) {
+    return Math.round(getRoundSortValueFromStr(roundStr) * 100);
+}
+
 // Calculate team ratings for a given round (using player history)
 function calculateTeamRatingsForRound(teamPlayers, round) {
+    const roundOrder = (typeof round.roundOrder === 'number')
+        ? round.roundOrder
+        : getRoundOrderFromStr(round.name);
     const playersAtRound = teamPlayers.map(p => {
         // Find the last history entry that matches this round
         // History keys format: "20251-01|1. kolo (JAR 2025)"
-        const targetPrefix = `${round.seasonOrder}-${String(round.roundNum).padStart(2, '0')}`;
+        const targetPrefix = `${round.seasonOrder}-${String(roundOrder).padStart(4, '0')}`;
         let ratingAtRound = null;
 
         // Get all history keys for this player
@@ -577,10 +590,10 @@ function calculateTeamRatingsForRound(teamPlayers, round) {
                 if (keyParts.length < 1) continue;
                 const keyPrefix = keyParts[0];
                 const keySeasonOrder = parseInt(keyPrefix.split('-')[0]) || 0;
-                const keyRoundNum = parseInt(keyPrefix.split('-')[1]) || 0;
+                const keyRoundOrder = parseInt(keyPrefix.split('-')[1]) || 0;
                 
                 if (keySeasonOrder < round.seasonOrder || 
-                    (keySeasonOrder === round.seasonOrder && keyRoundNum < round.roundNum)) {
+                    (keySeasonOrder === round.seasonOrder && keyRoundOrder < roundOrder)) {
                     ratingAtRound = p.history[key];
                     break;
                 }
@@ -595,9 +608,9 @@ function calculateTeamRatingsForRound(teamPlayers, round) {
         // Count activity (matches played) up to and including this round
         const matchesUpToRound = p.matchDetails.filter(md => {
             const mdSeasonOrder = getSeasonOrder(md.season);
-            const mdRoundNum = getRoundNumFromStr(md.round);
+            const mdRoundOrder = getRoundOrderFromStr(md.round);
             return mdSeasonOrder < round.seasonOrder || 
-                   (mdSeasonOrder === round.seasonOrder && mdRoundNum <= round.roundNum);
+                   (mdSeasonOrder === round.seasonOrder && mdRoundOrder <= roundOrder);
         });
         const activityAtRound = matchesUpToRound.length;
 
@@ -644,6 +657,8 @@ function buildRoundsIndex(matches) {
                 season: m.season,
                 seasonOrder: getSeasonOrder(m.season),
                 roundNum: getRoundNumFromStr(m.round),
+                roundSortValue: getRoundSortValueFromStr(m.round),
+                roundOrder: getRoundOrderFromStr(m.round),
                 refMatch: m
             };
         }
@@ -870,10 +885,10 @@ function processData(currentRoundIdOverride = null) {
                 p.rating += deltaOwn;
                 if (isLatestRound) p.roundGain += deltaOwn;
 
-                const rNum = parseInt((match.round.match(/\d+/) || [0])[0]);
+                const roundOrder = getRoundOrderFromStr(match.round);
                 const sOrder = getSeasonOrder(match.season);
                 const sDisp = match.season ? ` (${match.season})` : '';
-                const historyKey = `${sOrder}-${String(rNum).padStart(2, '0')}|${match.round}${sDisp}`;
+                const historyKey = `${sOrder}-${String(roundOrder).padStart(4, '0')}|${match.round}${sDisp}`;
 
                 p.history[historyKey] = p.rating;
 
@@ -1587,7 +1602,7 @@ function renderHomePage() {
         const allRoundIds = Object.values(roundsIndex)
             .sort((a, b) => {
                 if (a.seasonOrder !== b.seasonOrder) return a.seasonOrder - b.seasonOrder; // older -> newer
-                return a.roundNum - b.roundNum; // lower -> higher
+                return a.roundSortValue - b.roundSortValue; // lower -> higher
             })
             .map(r => r.id);
         const currentIndex = allRoundIds.indexOf(currentRoundId);
@@ -1655,7 +1670,7 @@ function renderHighlightsPage() {
     const roundsIndex = buildRoundsIndex(playedMatches || []);
     const allRounds = Object.values(roundsIndex).sort((a, b) => {
         if (a.seasonOrder !== b.seasonOrder) return b.seasonOrder - a.seasonOrder;
-        return b.roundNum - a.roundNum;
+        return b.roundSortValue - a.roundSortValue;
     });
 
     const roundSelect = document.getElementById('highlightsRoundSelect');
@@ -2022,7 +2037,7 @@ function renderSchedulePage() {
         matchesToProcess.forEach(m => {
             const id = getMatchRoundId(m);
             if (!rounds[id]) {
-                const rNum = parseInt((m.round.match(/\d+/) || [0])[0]);
+                const rNum = getRoundSortValueFromStr(m.round);
                 rounds[id] = {
                     id: id,
                     name: m.round,
@@ -2175,7 +2190,7 @@ function renderResultsPage() {
         matchesToProcess.forEach(m => {
             const id = getMatchRoundId(m);
             if (!rounds[id]) {
-                const rNum = parseInt((m.round.match(/\d+/) || [0])[0]);
+                const rNum = getRoundSortValueFromStr(m.round);
                 rounds[id] = {
                     id: id,
                     name: m.round,
@@ -3041,10 +3056,12 @@ function renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt = 
     
     // Add keys from all rounds
     Object.values(allRounds).forEach(round => {
-        const rNum = round.roundNum;
+        const roundOrder = (typeof round.roundOrder === 'number')
+            ? round.roundOrder
+            : getRoundOrderFromStr(round.name);
         const sOrder = round.seasonOrder;
         const sDisp = round.season ? ` (${round.season})` : '';
-        const historyKey = `${sOrder}-${String(rNum).padStart(2, '0')}|${round.name}${sDisp}`;
+        const historyKey = `${sOrder}-${String(roundOrder).padStart(4, '0')}|${round.name}${sDisp}`;
         historyKeysSet.add(historyKey);
     });
     
@@ -6306,7 +6323,7 @@ function renderMyTeamPage() {
                     games: [],
                     round: m.round,
                     seasonOrder: getSeasonOrder(m.season),
-                    roundNum: getRoundNumFromStr(m.round)
+                    roundNum: getRoundSortValueFromStr(m.round)
                 };
             }
             grouped[key].games.push(m);
@@ -6955,7 +6972,7 @@ function renderMyTeamPage() {
                     date: m.date,
                     location: m.location,
                     seasonOrder: getSeasonOrder(m.season),
-                    roundNum: getRoundNumFromStr(m.round),
+                    roundNum: getRoundSortValueFromStr(m.round),
                     group: m.group || ""
                 };
             }
