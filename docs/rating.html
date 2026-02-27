@@ -78,6 +78,10 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closePlayerModal()">&times;</span>
             <div id="selectedPlayerHeader"><div class="player-header-name" id="headerName"></div><div class="player-header-team" id="headerTeam"></div><div class="player-header-logo" id="headerTeamLogoWrapper"><img id="headerTeamLogo" alt="Team logo"></div></div>
+            <div id="playerAchievementsSection" style="display: none;">
+                <div class="pie-row-title"><span>Úspechy</span></div>
+                <div class="achievements-grid achievements-grid--modal" id="playerAchievementsGrid"></div>
+            </div>
             <div id="chartContainerWrapper">
                 <canvas id="ratingChart"></canvas>
             </div>

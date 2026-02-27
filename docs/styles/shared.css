@@ -485,6 +485,63 @@ a {
   border-radius: 50%;
 }
 
+/* Achievements (shared between mystats and rating modal) */
+.achievements-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.achievements-grid--modal {
+  justify-content: center;
+  margin: 0 auto 20px auto;
+}
+
+.achievement-badge {
+  width: 140px;
+  text-align: center;
+}
+
+.achievement-badge-circle {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 8px auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.achievement-badge-circle--gold {
+  background: radial-gradient(circle at 30% 30%, #fff5b3 0%, #facc15 70%, #ca8a04 100%);
+}
+
+.achievement-badge-circle--silver {
+  background: radial-gradient(circle at 30% 30%, #f3f4f6 0%, #cbd5e1 70%, #94a3b8 100%);
+}
+
+.achievement-badge-circle--bronze {
+  background: radial-gradient(circle at 30% 30%, #f5d0a9 0%, #b45309 70%, #7c2d12 100%);
+}
+
+.achievement-badge-icon {
+  font-size: 2.1rem;
+  line-height: 1;
+}
+
+.achievement-badge-name {
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 4px;
+}
+
+.achievement-badge-desc {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+
 .score-badge {
   background: var(--color-primary);
   color: var(--color-text-inverse);
