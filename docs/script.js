@@ -142,7 +142,7 @@ const ACHIEVEMENT_DEFINITIONS = {
     performerOfWeek: {
         id: 'performerOfWeek',
         name: 'Výkon týždňa',
-        icon: '🏓',
+        icon: 'media/badges/badge-performer-of-week.png',
         sortOrder: 1,
         tiers: [
             {rank: 1, tier: 'gold', title: 'Top 1 výkon'},
@@ -153,7 +153,7 @@ const ACHIEVEMENT_DEFINITIONS = {
     upsetOfWeek: {
         id: 'upsetOfWeek',
         name: 'Prekvapenie týždňa',
-        icon: '💥',
+        icon: 'media/badges/badge-upset-of-week.png',
         sortOrder: 2,
         tiers: [
             {rank: 1, tier: 'gold', title: 'Top 1 prekvapenie'},
@@ -164,19 +164,35 @@ const ACHIEVEMENT_DEFINITIONS = {
     marathonGuy: {
         id: 'marathonGuy',
         name: 'Maratónec kola',
-        icon: '🏃',
+        icon: 'media/badges/badge-marathon-guy.png',
         sortOrder: 3,
         tiers: [
-            {rank: 1, tier: 'gold', title: 'Top 1 maratónec'},
-            {rank: 2, tier: 'silver', title: 'Top 2 maratónec'},
-            {rank: 3, tier: 'bronze', title: 'Top 3 maratónec'}
+            {rank: 1, tier: 'gold', title: 'Maratónec kola'}
+        ]
+    },
+    mrThreeZero: {
+        id: 'mrThreeZero',
+        name: 'Pán 3:0',
+        icon: 'media/badges/badge-mr-3-0.png',
+        sortOrder: 4,
+        tiers: [
+            {rank: 1, tier: 'gold', title: 'Pán 3:0'}
+        ]
+    },
+    silentKiller: {
+        id: 'silentKiller',
+        name: 'Tichý zabijak',
+        icon: 'media/badges/badge-silent-killer.png',
+        sortOrder: 5,
+        tiers: [
+            {rank: 1, tier: 'gold', title: 'Tichý zabijak'}
         ]
     },
     topOfWorld: {
         id: 'topOfWorld',
         name: 'Na vrchole sveta',
-        icon: '🌍',
-        sortOrder: 4,
+        icon: 'media/badges/badge-top-of-world.png',
+        sortOrder: 6,
         tiers: [
             {rank: 1, tier: 'gold', title: 'Top 1 rating'},
             {rank: 2, tier: 'silver', title: 'Top 2 rating'},
@@ -185,7 +201,10 @@ const ACHIEVEMENT_DEFINITIONS = {
     }
 };
 
-const ENABLE_TOP_OF_WORLD_BADGES = false;
+const ENABLE_TOP_OF_WORLD_BADGES = true;
+const MARATHON_GUY_REQUIRED_CLOSE_MATCHES = 5;
+const MR_THREE_ZERO_REQUIRED_MATCHES = 5;
+const SILENT_KILLER_REQUIRED_MATCHES = 5;
 
 let achievementsByPlayerCache = null;
 
@@ -221,6 +240,7 @@ function buildPerformerOfWeekAchievements(roundInfo) {
 
 function buildUpsetOfWeekAchievements(roundInfo) {
     const badgeDef = ACHIEVEMENT_DEFINITIONS.upsetOfWeek;
+    const roundLabel = `${roundInfo.name}${roundInfo.season ? ` (${roundInfo.season})` : ''}`;
     const {upsetsList} = processData(roundInfo.id);
     const topUpsets = [...(upsetsList || [])]
         .sort((a, b) => b.diff - a.diff)
@@ -242,7 +262,7 @@ function buildUpsetOfWeekAchievements(roundInfo) {
             playerName: upset.winner,
             team: upset.wTeam || 'N/A',
             detailLines: [
-                `${tierInfo.title} kola ${roundInfo.name}.`,
+                `${tierInfo.title} kola ${roundLabel}.`,
                 `${upset.winner} ${String(upset.score || '').replace(':', '-')} ${upset.loser}`,
                 `Rating: ${(upset.wRate || 0).toFixed(1)} vs Rating: ${(upset.lRate || 0).toFixed(1)}`
             ]
@@ -252,31 +272,33 @@ function buildUpsetOfWeekAchievements(roundInfo) {
 
 function buildMarathonGuyAchievements(roundInfo) {
     const badgeDef = ACHIEVEMENT_DEFINITIONS.marathonGuy;
+    const roundLabel = `${roundInfo.name}${roundInfo.season ? ` (${roundInfo.season})` : ''}`;
     const roundMatches = (matchResults || []).filter(m => getMatchRoundId(m) === roundInfo.id && isPlayedMatch(m));
-    const setsByPlayer = new Map();
+    const closeMatchesByPlayer = new Map();
 
     roundMatches.forEach(match => {
         const scoreA = Number.parseInt(match.score_a, 10);
         const scoreB = Number.parseInt(match.score_b, 10);
         if (!Number.isFinite(scoreA) || !Number.isFinite(scoreB)) return;
-        const totalSets = scoreA + scoreB;
+        const isCloseMatch = (scoreA === 3 && scoreB === 2) || (scoreA === 2 && scoreB === 3);
+        if (!isCloseMatch) return;
         const sideA = String(match.player_a || '').split('/').map(n => n.trim()).filter(n => n && !isWalkoverToken(n));
         const sideB = String(match.player_b || '').split('/').map(n => n.trim()).filter(n => n && !isWalkoverToken(n));
         [...sideA, ...sideB].forEach(playerName => {
-            setsByPlayer.set(playerName, (setsByPlayer.get(playerName) || 0) + totalSets);
+            closeMatchesByPlayer.set(playerName, (closeMatchesByPlayer.get(playerName) || 0) + 1);
         });
     });
 
-    const topPlayers = Array.from(setsByPlayer.entries())
-        .map(([playerName, setsPlayed]) => ({playerName, setsPlayed}))
+    const qualifiedPlayers = Array.from(closeMatchesByPlayer.entries())
+        .filter(([, matchesCount]) => matchesCount === MARATHON_GUY_REQUIRED_CLOSE_MATCHES)
+        .map(([playerName, matchesCount]) => ({playerName, matchesCount}))
         .sort((a, b) => {
-            if (a.setsPlayed !== b.setsPlayed) return b.setsPlayed - a.setsPlayed;
+            if (a.matchesCount !== b.matchesCount) return b.matchesCount - a.matchesCount;
             return a.playerName.localeCompare(b.playerName, 'sk', {sensitivity: 'base'});
-        })
-        .slice(0, 3);
+        });
 
-    return topPlayers.map((entry, index) => {
-        const tierInfo = badgeDef.tiers[index];
+    return qualifiedPlayers.map((entry) => {
+        const tierInfo = badgeDef.tiers[0];
         return {
             type: badgeDef.id,
             badgeName: badgeDef.name,
@@ -291,9 +313,113 @@ function buildMarathonGuyAchievements(roundInfo) {
             playerName: entry.playerName,
             team: 'N/A',
             detailLines: [
-                `${tierInfo.title} v ${roundInfo.name}.`,
+                `${tierInfo.title} v ${roundLabel}.`,
                 entry.playerName,
-                `Odohrané sety: ${entry.setsPlayed}`
+                `Počet zápasov 3:2 / 2:3: ${entry.matchesCount}`
+            ]
+        };
+    });
+}
+
+function buildMrThreeZeroAchievements(roundInfo) {
+    const badgeDef = ACHIEVEMENT_DEFINITIONS.mrThreeZero;
+    const roundLabel = `${roundInfo.name}${roundInfo.season ? ` (${roundInfo.season})` : ''}`;
+    const roundMatches = (matchResults || []).filter(m => getMatchRoundId(m) === roundInfo.id && isPlayedMatch(m));
+    const cleanWinsByPlayer = new Map();
+
+    roundMatches.forEach(match => {
+        const scoreA = Number.parseInt(match.score_a, 10);
+        const scoreB = Number.parseInt(match.score_b, 10);
+        if (!Number.isFinite(scoreA) || !Number.isFinite(scoreB)) return;
+
+        const sideA = String(match.player_a || '').split('/').map(n => n.trim()).filter(n => n && !isWalkoverToken(n));
+        const sideB = String(match.player_b || '').split('/').map(n => n.trim()).filter(n => n && !isWalkoverToken(n));
+
+        if (scoreA === 3 && scoreB === 0) {
+            sideA.forEach(playerName => {
+                cleanWinsByPlayer.set(playerName, (cleanWinsByPlayer.get(playerName) || 0) + 1);
+            });
+        } else if (scoreB === 3 && scoreA === 0) {
+            sideB.forEach(playerName => {
+                cleanWinsByPlayer.set(playerName, (cleanWinsByPlayer.get(playerName) || 0) + 1);
+            });
+        }
+    });
+
+    const qualifiedPlayers = Array.from(cleanWinsByPlayer.entries())
+        .filter(([, matchesCount]) => matchesCount === MR_THREE_ZERO_REQUIRED_MATCHES)
+        .map(([playerName, matchesCount]) => ({playerName, matchesCount}))
+        .sort((a, b) => a.playerName.localeCompare(b.playerName, 'sk', {sensitivity: 'base'}));
+
+    return qualifiedPlayers.map((entry) => {
+        const tierInfo = badgeDef.tiers[0];
+        return {
+            type: badgeDef.id,
+            badgeName: badgeDef.name,
+            icon: badgeDef.icon,
+            tier: tierInfo.tier,
+            rank: tierInfo.rank,
+            sortOrder: badgeDef.sortOrder,
+            title: tierInfo.title,
+            roundId: roundInfo.id,
+            roundSortValue: roundInfo.roundSortValue,
+            seasonOrder: roundInfo.seasonOrder,
+            playerName: entry.playerName,
+            team: 'N/A',
+            detailLines: [
+                `${tierInfo.title} v ${roundLabel}.`,
+                entry.playerName,
+                `Vyhral všetkých ${MR_THREE_ZERO_REQUIRED_MATCHES} zápasov 3:0`
+            ]
+        };
+    });
+}
+
+function buildSilentKillerAchievements(roundInfo) {
+    const badgeDef = ACHIEVEMENT_DEFINITIONS.silentKiller;
+    const roundLabel = `${roundInfo.name}${roundInfo.season ? ` (${roundInfo.season})` : ''}`;
+    const {players} = processData(roundInfo.id);
+
+    const qualifiedPlayers = Object.values(players)
+        .map(player => {
+            const matchesThisRound = (player.matchDetails || []).filter(md => getMatchRoundId(md) === roundInfo.id);
+            if (matchesThisRound.length !== SILENT_KILLER_REQUIRED_MATCHES) return null;
+
+            const noRatingDropInAnyMatch = matchesThisRound.every(md => Number.isFinite(md.delta_own) && md.delta_own >= 0);
+            const hasAtLeastOneLoss = matchesThisRound.some(md => md.score_own < md.score_opp);
+            if (!noRatingDropInAnyMatch || !hasAtLeastOneLoss) return null;
+
+            const totalGain = matchesThisRound.reduce((sum, md) => sum + (md.delta_own || 0), 0);
+            return {
+                playerName: player.name,
+                totalGain
+            };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+            if (a.totalGain !== b.totalGain) return b.totalGain - a.totalGain;
+            return a.playerName.localeCompare(b.playerName, 'sk', {sensitivity: 'base'});
+        });
+
+    return qualifiedPlayers.map((entry) => {
+        const tierInfo = badgeDef.tiers[0];
+        return {
+            type: badgeDef.id,
+            badgeName: badgeDef.name,
+            icon: badgeDef.icon,
+            tier: tierInfo.tier,
+            rank: tierInfo.rank,
+            sortOrder: badgeDef.sortOrder,
+            title: tierInfo.title,
+            roundId: roundInfo.id,
+            roundSortValue: roundInfo.roundSortValue,
+            seasonOrder: roundInfo.seasonOrder,
+            playerName: entry.playerName,
+            team: 'N/A',
+            detailLines: [
+                `${tierInfo.title} v ${roundLabel}.`,
+                entry.playerName,
+                `Odohral všetkých ${SILENT_KILLER_REQUIRED_MATCHES} zápasov, mal aspoň jednu prehru a v žiadnom zápase nestratil rating.`
             ]
         };
     });
@@ -317,8 +443,29 @@ function getPlayerRatingAtOrBeforeRound(player, targetSeasonOrder, targetRoundOr
     return best ? best.rating : null;
 }
 
+function isRoundFullyPlayedForBadges(roundId) {
+    const roundMatches = (matchResults || []).filter(m => getMatchRoundId(m) === roundId);
+    if (!roundMatches.length) return false;
+
+    // Group by team fixture and require every game in every fixture to be played.
+    const fixtures = new Map();
+    roundMatches.forEach(m => {
+        const teamA = String(m.player_a_team || '').trim();
+        const teamB = String(m.player_b_team || '').trim();
+        const fixtureKey = [teamA, teamB].sort((a, b) => a.localeCompare(b, 'sk', {sensitivity: 'base'})).join('::');
+        if (!fixtures.has(fixtureKey)) fixtures.set(fixtureKey, []);
+        fixtures.get(fixtureKey).push(m);
+    });
+
+    for (const games of fixtures.values()) {
+        if (!games.every(isPlayedMatch)) return false;
+    }
+    return true;
+}
+
 function buildTopOfWorldAchievements(roundInfo, allPlayers) {
     const badgeDef = ACHIEVEMENT_DEFINITIONS.topOfWorld;
+    const roundLabel = `${roundInfo.name}${roundInfo.season ? ` (${roundInfo.season})` : ''}`;
     const topRated = Object.values(allPlayers || {})
         .map(player => ({
             player,
@@ -344,7 +491,7 @@ function buildTopOfWorldAchievements(roundInfo, allPlayers) {
             playerName: item.player.name,
             team: item.player.team || 'N/A',
             detailLines: [
-                `${tierInfo.title} po kole ${roundInfo.name}.`,
+                `${tierInfo.title} po kole ${roundLabel}.`,
                 item.player.name,
                 `Rating: ${item.ratingAtRound.toFixed(1)}`
             ]
@@ -365,10 +512,13 @@ function getLeagueAchievementsByPlayer() {
 
     const map = {};
     rounds.forEach(roundInfo => {
+        if (!isRoundFullyPlayedForBadges(roundInfo.id)) return;
         const roundBadges = [
             ...buildPerformerOfWeekAchievements(roundInfo),
             ...buildUpsetOfWeekAchievements(roundInfo),
             ...buildMarathonGuyAchievements(roundInfo),
+            ...buildMrThreeZeroAchievements(roundInfo),
+            ...buildSilentKillerAchievements(roundInfo),
             ...(ENABLE_TOP_OF_WORLD_BADGES ? buildTopOfWorldAchievements(roundInfo, allPlayers) : [])
         ];
         roundBadges.forEach(badge => {
@@ -391,24 +541,122 @@ function getLeagueAchievementsByPlayer() {
     return map;
 }
 
-function renderAchievementsBadges(containerEl, badges = []) {
+function renderAchievementsBadges(containerEl, badges = [], options = {}) {
     if (!containerEl) return false;
     if (!Array.isArray(badges) || badges.length === 0) {
         containerEl.innerHTML = '';
         return false;
     }
 
-    containerEl.innerHTML = badges.map(badge => `
-        <article class="achievement-badge" title="${escapeAttr(badge.badgeName)}">
-            <div class="achievement-badge-circle achievement-badge-circle--${escapeAttr(badge.tier)}">
-                <span class="achievement-badge-icon">${escapeHtml(badge.icon)}</span>
-            </div>
-            <div class="achievement-badge-name">${escapeHtml(badge.title)}</div>
-            <div class="achievement-badge-desc">${(Array.isArray(badge.detailLines) && badge.detailLines.length > 0)
-                ? badge.detailLines.map(line => `<div>${escapeHtml(line)}</div>`).join('')
-                : escapeHtml(badge.detail || '')}</div>
-        </article>
-    `).join('');
+    const mergeDuplicateBadges = !!options.mergeDuplicateBadges || !!options.mergeTopOfWorldDuplicates;
+    const renderItems = [];
+    const mergedTopWorldIndexByKey = new Map();
+
+    badges.forEach(badge => {
+        if (!mergeDuplicateBadges) {
+            renderItems.push({ kind: 'single', badge });
+            return;
+        }
+
+        const mergeKey = `${badge.type}::${badge.rank}::${badge.tier}`;
+        if (!mergedTopWorldIndexByKey.has(mergeKey)) {
+            mergedTopWorldIndexByKey.set(mergeKey, renderItems.length);
+            renderItems.push({ kind: 'mergedTopWorld', mergeKey, badges: [badge] });
+        } else {
+            const idx = mergedTopWorldIndexByKey.get(mergeKey);
+            renderItems[idx].badges.push(badge);
+        }
+    });
+
+    const renderBadgeDetails = (badge) => (Array.isArray(badge.detailLines) && badge.detailLines.length > 0)
+        ? badge.detailLines.map(line => `<div>${escapeHtml(line)}</div>`).join('')
+        : escapeHtml(badge.detail || '');
+    const renderBadgeIcon = (badge) => {
+        const icon = String(badge?.icon || '').trim();
+        if (icon.toLowerCase().endsWith('.png')) {
+            return `<img class="achievement-badge-icon-img" src="${escapeAttr(icon)}" alt="${escapeAttr(badge?.badgeName || 'Badge')}" loading="lazy">`;
+        }
+        return `<span class="achievement-badge-icon">${escapeHtml(icon)}</span>`;
+    };
+
+    const openAchievementsDetailsModal = (title, bodyHtml) => {
+        let modal = document.getElementById('achievementsDetailsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'achievementsDetailsModal';
+            modal.className = 'achievements-details-modal';
+            modal.innerHTML = `
+                <div class="achievements-details-modal__backdrop" data-achievements-close="1"></div>
+                <div class="achievements-details-modal__dialog" role="dialog" aria-modal="true" aria-label="Detail odznaku">
+                    <button type="button" class="achievements-details-modal__close" data-achievements-close="1" aria-label="Zavrieť">&times;</button>
+                    <div class="achievements-details-modal__title" id="achievementsDetailsModalTitle"></div>
+                    <div class="achievements-details-modal__body" id="achievementsDetailsModalBody"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', (e) => {
+                if (e.target && e.target.getAttribute && e.target.getAttribute('data-achievements-close') === '1') {
+                    modal.classList.remove('is-open');
+                }
+            });
+        }
+
+        const titleEl = document.getElementById('achievementsDetailsModalTitle');
+        const bodyEl = document.getElementById('achievementsDetailsModalBody');
+        if (titleEl) titleEl.textContent = title;
+        if (bodyEl) bodyEl.innerHTML = bodyHtml;
+        modal.classList.add('is-open');
+    };
+
+    containerEl.innerHTML = renderItems.map((item, idx) => {
+        if (item.kind === 'single') {
+            const badge = item.badge;
+            return `<article class="achievement-badge" title="${escapeAttr(badge.badgeName)}">
+                <div class="achievement-badge-circle achievement-badge-circle--${escapeAttr(badge.tier)}">
+                    ${renderBadgeIcon(badge)}
+                </div>
+                <div class="achievement-badge-name">${escapeHtml(badge.title)}</div>
+                <div class="achievement-badge-desc">${renderBadgeDetails(badge)}</div>
+            </article>`;
+        }
+
+        const groupedBadges = item.badges || [];
+        const representative = groupedBadges[0];
+        const multiplier = groupedBadges.length;
+        const toggleId = `badge-toggle-${idx}`;
+        const showExpand = multiplier > 1;
+        return `<article class="achievement-badge achievement-badge--merged" title="${escapeAttr(representative.badgeName)}">
+            <button type="button" class="achievement-badge-toggle" data-badge-toggle="${escapeAttr(toggleId)}" aria-expanded="false" ${showExpand ? '' : 'disabled'}>
+                <span class="achievement-badge-circle-wrap">
+                    <span class="achievement-badge-circle achievement-badge-circle--${escapeAttr(representative.tier)}">
+                        ${renderBadgeIcon(representative)}
+                    </span>
+                    ${showExpand ? `<span class="achievement-badge-multiplier">x${multiplier}</span>` : ''}
+                </span>
+                <div class="achievement-badge-name">${escapeHtml(representative.title)}</div>
+                <div class="achievement-badge-desc">${showExpand ? 'Kliknite pre zobrazenie detailu.' : renderBadgeDetails(representative)}</div>
+            </button>
+        </article>`;
+    }).join('');
+
+    containerEl.querySelectorAll('[data-badge-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            const key = btn.getAttribute('data-badge-toggle');
+            const item = renderItems.find(x => x.kind === 'mergedTopWorld' && `badge-toggle-${renderItems.indexOf(x)}` === key);
+            if (!item || !item.badges || item.badges.length <= 1) return;
+            const representative = item.badges[0];
+            const sortedBadges = [...item.badges].sort((a, b) => {
+                if ((a.seasonOrder || 0) !== (b.seasonOrder || 0)) return (b.seasonOrder || 0) - (a.seasonOrder || 0);
+                if ((a.roundSortValue || 0) !== (b.roundSortValue || 0)) return (b.roundSortValue || 0) - (a.roundSortValue || 0);
+                return 0;
+            });
+            const bodyHtml = sortedBadges
+                .map(b => `<div class="achievement-badge-modal-item">${renderBadgeDetails(b)}</div>`)
+                .join('');
+            openAchievementsDetailsModal(`${representative.title} (x${item.badges.length})`, bodyHtml);
+        });
+    });
     return true;
 }
 
@@ -1950,6 +2198,7 @@ function renderHighlightsPage() {
     const roundSelect = document.getElementById('highlightsRoundSelect');
     const titleEl = document.getElementById('highlightsRoundTitle');
     const latestRoundContainer = document.getElementById('latestRoundContainer');
+    const highlightsBadgesContainer = document.getElementById('highlightsBadgesContainer');
     const topMatchesWeekContainer = document.getElementById('topMatchesWeekContainer');
     const gainList = document.getElementById('topGainersList');
     const upsetDiv = document.getElementById('upsetContainer');
@@ -1961,7 +2210,8 @@ function renderHighlightsPage() {
     const topUpsetCardBack = document.getElementById('topUpsetCardBack');
     const topPerformanceCardBack = document.getElementById('topPerformanceCardBack');
     const teamOfWeekCardBack = document.getElementById('teamOfWeekCardBack');
-    if (!roundSelect || !titleEl || !latestRoundContainer || !topMatchesWeekContainer || !gainList || !upsetDiv || !prevRoundBtn || !nextRoundBtn || !prevButtons.length || !nextButtons.length || !topMatchCardBack || !topUpsetCardBack || !topPerformanceCardBack || !teamOfWeekCardBack) return;
+    if (!roundSelect || !titleEl || !latestRoundContainer || !highlightsBadgesContainer || !topMatchesWeekContainer || !gainList || !upsetDiv || !prevRoundBtn || !nextRoundBtn || !prevButtons.length || !nextButtons.length || !topMatchCardBack || !topUpsetCardBack || !topPerformanceCardBack || !teamOfWeekCardBack) return;
+    const achievementsByPlayer = getLeagueAchievementsByPlayer();
 
     const getRoundFromURL = () => {
         try {
@@ -1985,6 +2235,41 @@ function renderHighlightsPage() {
     };
 
     const setEmptyStateHtml = (message) => `<div class="highlights-empty-state">${message}</div>`;
+    const renderBadgesForRound = (roundId) => {
+        const badges = [];
+        Object.values(achievementsByPlayer).forEach(playerBadges => {
+            (playerBadges || []).forEach(b => {
+                if (b.roundId === roundId) badges.push(b);
+            });
+        });
+        badges.sort((a, b) => {
+            if ((a.sortOrder || 99) !== (b.sortOrder || 99)) return (a.sortOrder || 99) - (b.sortOrder || 99);
+            if (a.rank !== b.rank) return a.rank - b.rank;
+            return String(a.playerName || '').localeCompare(String(b.playerName || ''), 'sk', {sensitivity: 'base'});
+        });
+
+        if (!badges.length) {
+            highlightsBadgesContainer.innerHTML = setEmptyStateHtml('Odznaky budú udelené až po odohraní všetkých tímových zápasov v tomto kole.');
+            return;
+        }
+
+        highlightsBadgesContainer.innerHTML = badges.map(badge => {
+            const detailsHtml = (Array.isArray(badge.detailLines) && badge.detailLines.length > 0)
+                ? badge.detailLines.map(line => `<div>${escapeHtml(line)}</div>`).join('')
+                : `<div>${escapeHtml(badge.detail || '')}</div>`;
+            return `<article class="achievement-badge" title="${escapeAttr(badge.badgeName)}">
+                <div class="achievement-badge-circle achievement-badge-circle--${escapeAttr(badge.tier)}">
+                    ${String(badge.icon || '').toLowerCase().endsWith('.png')
+                        ? `<img class="achievement-badge-icon-img" src="${escapeAttr(badge.icon)}" alt="${escapeAttr(badge.badgeName || 'Badge')}" loading="lazy">`
+                        : `<span class="achievement-badge-icon">${escapeHtml(badge.icon)}</span>`}
+                </div>
+                <div class="achievement-badge-name">${escapeHtml(badge.title)}</div>
+                <div class="highlights-badge-awarded">${escapeHtml(badge.playerName || '-')}</div>
+                <div class="achievement-badge-desc">${detailsHtml}</div>
+            </article>`;
+        }).join('');
+    };
+
     const isDoublesGame = (g) => g && (g.doubles === true || g.doubles === 'true');
     const splitPlayers = (raw) => (raw || '').split('/').map(n => n.trim()).filter(n => n && !isWalkoverToken(n));
     const getWeightedTeamRating = (fixtureGames, teamName, playersData, roundName, seasonName) => {
@@ -2026,6 +2311,7 @@ function renderHighlightsPage() {
     const renderRoundHighlights = (roundId) => {
         latestRoundContainer.innerHTML = '';
         topMatchesWeekContainer.innerHTML = '';
+        highlightsBadgesContainer.innerHTML = '';
         gainList.innerHTML = '';
         upsetDiv.innerHTML = '';
         const effectiveRoundId = (roundId && roundsIndex[roundId]) ? roundId : null;
@@ -2037,6 +2323,7 @@ function renderHighlightsPage() {
             topUpsetCardBack.innerHTML = 'V tomto týždni nie je dostupné prekvapenie.';
             topPerformanceCardBack.innerHTML = 'V tomto týždni nie je dostupný top výkon.';
             teamOfWeekCardBack.innerHTML = 'V tomto týždni nie je dostupný tím týždňa.';
+            highlightsBadgesContainer.innerHTML = setEmptyStateHtml('V tomto týždni nie sú dostupné odznaky.');
             topMatchesWeekContainer.innerHTML = setEmptyStateHtml('V tomto týždni nie sú dostupné odohrané dvojhry.');
             gainList.innerHTML = `<li class="highlights-empty-state">V tomto kole zatiaľ nikto nezískal kladný rating.</li>`;
             upsetDiv.innerHTML = setEmptyStateHtml('V tomto kole zatiaľ nie sú zaznamenané prekvapenia.');
@@ -2048,6 +2335,7 @@ function renderHighlightsPage() {
         const roundRef = selectedRoundMatches[0] || roundsIndex[effectiveRoundId]?.refMatch;
         const roundName = roundRef ? `${roundRef.round}${roundRef.season ? ` (${roundRef.season})` : ''}` : effectiveRoundId;
         titleEl.innerText = `Aktuálny týždeň: ${roundName}`;
+        renderBadgesForRound(effectiveRoundId);
 
         const {players, upsetsList} = processData(effectiveRoundId);
         const playerArr = Object.values(players);
@@ -3733,7 +4021,7 @@ function renderRatingPage() {
         const grid = document.getElementById('playerAchievementsGrid');
         if (!section || !grid || !player) return;
         const badges = achievementsByPlayer[normalizePlayerKey(player.name)] || [];
-        const hasBadges = renderAchievementsBadges(grid, badges);
+        const hasBadges = renderAchievementsBadges(grid, badges, { mergeDuplicateBadges: true });
         section.style.display = hasBadges ? '' : 'none';
     };
 
@@ -6190,7 +6478,7 @@ function renderMyStatsPage() {
         const myAchievementsGrid = document.getElementById('myAchievementsGrid');
         if (myAchievementsSection && myAchievementsGrid) {
             const badges = achievementsByPlayer[normalizePlayerKey(p.name)] || [];
-            const hasBadges = renderAchievementsBadges(myAchievementsGrid, badges);
+            const hasBadges = renderAchievementsBadges(myAchievementsGrid, badges, { mergeDuplicateBadges: true });
             myAchievementsSection.style.display = hasBadges ? '' : 'none';
         }
 

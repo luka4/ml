@@ -328,6 +328,18 @@
   list-style: none;
 }
 
+#highlightsBadgesContainer {
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.highlights-badge-awarded {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
 .highlights-bottom-nav {
   display: flex;
   justify-content: center;
