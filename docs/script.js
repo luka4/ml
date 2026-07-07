@@ -6,6 +6,7 @@
 const INITIAL_RATING = 100;
 const INITIAL_RATING_4_LIGA = 150;
 const K_FACTOR_STAGES = {1: 30, 2: 26, 3: 22, 4: 18, 5: 14, default: 10};
+const PERFORMANCE_SCORE_EPSILON = 0.02;
 
 // LocalStorage keys
 const MYSTATS_STORAGE_KEY = 'mystats_player_name';
@@ -831,6 +832,31 @@ function winProb(rA, rB) {
     return 1 / (1 + Math.pow(10, (rB - rA) / 300));
 }
 
+function calculateRatingPerformance(entries) {
+    const validEntries = (entries || []).filter(e =>
+        e && Number.isFinite(e.opponentRating) && Number.isFinite(e.scoreOwn) && Number.isFinite(e.totalSets) && e.totalSets > 0
+    );
+    if (validEntries.length === 0) return null;
+
+    const totalSets = validEntries.reduce((sum, e) => sum + e.totalSets, 0);
+    const actualSets = validEntries.reduce((sum, e) => sum + e.scoreOwn, 0);
+    if (totalSets <= 0) return null;
+
+    const targetSets = clamp(actualSets / totalSets, PERFORMANCE_SCORE_EPSILON, 1 - PERFORMANCE_SCORE_EPSILON) * totalSets;
+    const opponentRatings = validEntries.map(e => e.opponentRating);
+    let low = Math.min(...opponentRatings) - 800;
+    let high = Math.max(...opponentRatings) + 800;
+
+    for (let i = 0; i < 50; i++) {
+        const mid = (low + high) / 2;
+        const expectedSets = validEntries.reduce((sum, e) => sum + (e.totalSets * winProb(mid, e.opponentRating)), 0);
+        if (expectedSets < targetSets) low = mid;
+        else high = mid;
+    }
+
+    return (low + high) / 2;
+}
+
 // Score distribution calculation for match predictions
 function getScoreDistribution(probWin) {
     const p = Math.max(0, Math.min(1, probWin || 0));
@@ -1258,6 +1284,7 @@ function processData(currentRoundIdOverride = null) {
                 dMatches: 0, dWins: 0, dLosses: 0, dSetsWin: 0, dSetsLose: 0,
                 maxRating: initialRating, minRating: initialRating,
                 team: teamName || 'N/A', lastPlayed: 'N/A', roundGain: 0,
+                latestRoundEffectiveness: null, latestRoundEffectivenessEntries: [],
                 bestWinOpponent: null, bestWinRating: -Infinity,
                 worstLossOpponent: null, worstLossRating: Infinity,
                 history: {}, matchDetails: []
@@ -1339,9 +1366,20 @@ function processData(currentRoundIdOverride = null) {
         }
         // --- FIXED LOGIC END ---
 
-        if (isLatestRound && !isDoubles) {
+        if (isLatestRound) {
+            pNamesA.forEach(n => {
+                if (players[n] && Array.isArray(players[n].latestRoundEffectivenessEntries)) {
+                    players[n].latestRoundEffectivenessEntries.push({opponentRating: Rb, scoreOwn: scoreA, totalSets: N});
+                }
+            });
+            pNamesB.forEach(n => {
+                if (players[n] && Array.isArray(players[n].latestRoundEffectivenessEntries)) {
+                    players[n].latestRoundEffectivenessEntries.push({opponentRating: Ra, scoreOwn: scoreB, totalSets: N});
+                }
+            });
+
             // Filter out WO matches for upsets
-            if (match.player_a !== 'WO' && match.player_b !== 'WO') {
+            if (!isDoubles && match.player_a !== 'WO' && match.player_b !== 'WO') {
                 if (scoreA > scoreB && Rb > Ra) {
                     upsetsList.push({
                         winner: pNamesA[0],
@@ -1453,6 +1491,10 @@ function processData(currentRoundIdOverride = null) {
         // Also pass diffOpp and oppRatingBeforeMatch so we can calculate opponent's rating after correctly
         updateSide(pNamesA, scoreA, scoreB, diffA, diffB, displayDeltaB, pNamesB, match.player_b_team, match.player_a_team, oppRatingBeforeA);
         updateSide(pNamesB, scoreB, scoreA, diffB, diffA, displayDeltaA, pNamesA, match.player_a_team, match.player_b_team, oppRatingBeforeB);
+    });
+
+    Object.values(players).forEach(p => {
+        p.latestRoundEffectiveness = calculateRatingPerformance(p.latestRoundEffectivenessEntries);
     });
 
     return {players, roundsSet, totalSets, latestRoundName, latestRoundId, upsetsList};
@@ -1943,6 +1985,31 @@ function renderDerivedStats(stats, compareStats = null) {
 // 4. PAGE RENDERERS
 // ============================================================
 
+function renderLatestRoundEffectivenessList(players, container, options = {}) {
+    const target = typeof container === 'string' ? document.getElementById(container) : container;
+    if (!target) return;
+
+    const limit = options.limit || 10;
+    const emptyMessage = options.emptyMessage || 'V tomto kole zatiaľ nie je dostupná efektivita.';
+    const topPlayers = Object.values(players || {})
+        .filter(p => Number.isFinite(p.latestRoundEffectiveness))
+        .sort((a, b) => b.latestRoundEffectiveness - a.latestRoundEffectiveness)
+        .slice(0, limit);
+
+    target.innerHTML = '';
+    if (topPlayers.length === 0) {
+        target.innerHTML = `<li class="highlights-empty-state">${escapeHtml(emptyMessage)}</li>`;
+        return;
+    }
+
+    topPlayers.forEach((p, index) => {
+        const li = document.createElement('li');
+        li.className = 'top-player-row';
+        li.innerHTML = `<div class="tp-rank">${index + 1}</div><div class="tp-name">${escapeHtml(p.name)} <span class="tp-team">(${escapeHtml(p.team || 'N/A')})</span></div><div class="tp-gain tp-effectiveness">${p.latestRoundEffectiveness.toFixed(1)}</div>`;
+        target.appendChild(li);
+    });
+}
+
 function initFlipCards(root = document) {
     const cards = Array.from((root || document).querySelectorAll('[data-flip-card]'));
     if (!cards.length) return;
@@ -2097,6 +2164,9 @@ function renderHomePage() {
         li.innerHTML = `<div class="tp-rank">${index + 1}</div><div class="tp-name">${p.name} <span class="tp-team">(${p.team})</span></div><div class="tp-gain">+${p.roundGain.toFixed(1)}</div>`;
         gainList.appendChild(li);
     });
+    renderLatestRoundEffectivenessList(players, 'topEffectivenessList', {
+        emptyMessage: 'V tomto kole zatiaľ nie je dostupná efektivita dvojhier ani štvorhier.'
+    });
 
     // Upsets
     const upsetDiv = document.getElementById('upsetContainer');
@@ -2201,6 +2271,7 @@ function renderHighlightsPage() {
     const highlightsBadgesContainer = document.getElementById('highlightsBadgesContainer');
     const topMatchesWeekContainer = document.getElementById('topMatchesWeekContainer');
     const gainList = document.getElementById('topGainersList');
+    const effectivenessList = document.getElementById('topEffectivenessList');
     const upsetDiv = document.getElementById('upsetContainer');
     const prevRoundBtn = document.getElementById('highlightsPrevRoundBtn');
     const nextRoundBtn = document.getElementById('highlightsNextRoundBtn');
@@ -2210,7 +2281,7 @@ function renderHighlightsPage() {
     const topUpsetCardBack = document.getElementById('topUpsetCardBack');
     const topPerformanceCardBack = document.getElementById('topPerformanceCardBack');
     const teamOfWeekCardBack = document.getElementById('teamOfWeekCardBack');
-    if (!roundSelect || !titleEl || !latestRoundContainer || !highlightsBadgesContainer || !topMatchesWeekContainer || !gainList || !upsetDiv || !prevRoundBtn || !nextRoundBtn || !prevButtons.length || !nextButtons.length || !topMatchCardBack || !topUpsetCardBack || !topPerformanceCardBack || !teamOfWeekCardBack) return;
+    if (!roundSelect || !titleEl || !latestRoundContainer || !highlightsBadgesContainer || !topMatchesWeekContainer || !gainList || !effectivenessList || !upsetDiv || !prevRoundBtn || !nextRoundBtn || !prevButtons.length || !nextButtons.length || !topMatchCardBack || !topUpsetCardBack || !topPerformanceCardBack || !teamOfWeekCardBack) return;
     const achievementsByPlayer = getLeagueAchievementsByPlayer();
 
     const getRoundFromURL = () => {
@@ -2313,6 +2384,7 @@ function renderHighlightsPage() {
         topMatchesWeekContainer.innerHTML = '';
         highlightsBadgesContainer.innerHTML = '';
         gainList.innerHTML = '';
+        effectivenessList.innerHTML = '';
         upsetDiv.innerHTML = '';
         const effectiveRoundId = (roundId && roundsIndex[roundId]) ? roundId : null;
         updateURLWithRound(effectiveRoundId);
@@ -2326,6 +2398,9 @@ function renderHighlightsPage() {
             highlightsBadgesContainer.innerHTML = setEmptyStateHtml('V tomto týždni nie sú dostupné odznaky.');
             topMatchesWeekContainer.innerHTML = setEmptyStateHtml('V tomto týždni nie sú dostupné odohrané dvojhry.');
             gainList.innerHTML = `<li class="highlights-empty-state">V tomto kole zatiaľ nikto nezískal kladný rating.</li>`;
+            renderLatestRoundEffectivenessList({}, effectivenessList, {
+                emptyMessage: 'V tomto kole zatiaľ nie je dostupná efektivita dvojhier ani štvorhier.'
+            });
             upsetDiv.innerHTML = setEmptyStateHtml('V tomto kole zatiaľ nie sú zaznamenané prekvapenia.');
             updateRoundNavButtons(null);
             return;
@@ -2408,6 +2483,10 @@ function renderHighlightsPage() {
             const tp = topPerformers[0];
             topPerformanceCardBack.innerHTML = `${tp.name} (${tp.team})<br>Zisk ratingu: +${tp.roundGain.toFixed(1)}`;
         }
+
+        renderLatestRoundEffectivenessList(players, effectivenessList, {
+            emptyMessage: 'V tomto kole zatiaľ nie je dostupná efektivita dvojhier ani štvorhier.'
+        });
 
         const sortedUpsets = [...upsetsList].sort((a, b) => b.diff - a.diff);
         if (sortedUpsets.length > 0) {
@@ -3927,6 +4006,8 @@ function renderRatingPage() {
                     return p.rating || 0;
                 case 'latest_round_points':
                     return p.latestRoundPoints !== null && p.latestRoundPoints !== undefined ? p.latestRoundPoints : -Infinity;
+                case 'latest_round_effectiveness':
+                    return Number.isFinite(p.latestRoundEffectiveness) ? p.latestRoundEffectiveness : -Infinity;
                 case 'rebricek':
                     return p.rebricek || 0;
                 case 's_matches':
@@ -4128,11 +4209,15 @@ function renderRatingPage() {
                 const symbol = delta > 0 ? '▲' : '▼';
                 return `<span class="diff-val ${className}">${symbol}${Math.abs(delta).toFixed(2)}</span>`;
             })();
+            const latestRoundEffectivenessHtml = Number.isFinite(p.latestRoundEffectiveness)
+                ? `<span class="rating-performance-val">${p.latestRoundEffectiveness.toFixed(1)}</span>`
+                : '';
 
             tr.innerHTML = `
                 <td>${ratingRank}</td><td>${p.name}</td><td>${p.team}</td>
                 <td class="${ratingClass}">${p.rating.toFixed(2)}</td>
                 <td>${latestRoundPointsHtml}</td>
+                <td>${latestRoundEffectivenessHtml}</td>
                 <td class="form-cell">${formHtml}</td>
 <!--                TODO temporary remove rebricek-->
 <!--                <td>${rebricekVal}</td>-->
@@ -4178,6 +4263,7 @@ function renderRatingPage() {
             null,            // Tím (excluded)
             'rating',        // Rating
             'latest_round_points', // Posledné Kolo
+            'latest_round_effectiveness', // Úspešnosť posledného kola
             'form',          // Forma
             // TODO temporary remove rebricek
             // 'rebricek',
@@ -6453,6 +6539,13 @@ function renderMyStatsPage() {
         changeEl.textContent = `${changeSign}${roundChange.toFixed(2)}`;
         changeEl.classList.remove('positive', 'negative');
         changeEl.classList.add(roundChange >= 0 ? 'positive' : 'negative');
+
+        const effectivenessEl = document.getElementById('myLastRoundEffectiveness');
+        if (effectivenessEl) {
+            effectivenessEl.textContent = Number.isFinite(p.latestRoundEffectiveness)
+                ? p.latestRoundEffectiveness.toFixed(1)
+                : '-';
+        }
 
         // Peak rating
         const peak = findPeakRating(p);
