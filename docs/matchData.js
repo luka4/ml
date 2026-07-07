@@ -104,6 +104,7 @@ var matchResults = window.matchResults = [];
       loadStaticMatches(),
       loadDynamicMatches(),
     ]);
+    console.log(dynamicMatches);
 
     matchResults = [...staticMatches, ...dynamicMatches];
     window.matchResults = matchResults;
