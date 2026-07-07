@@ -7,6 +7,7 @@ const INITIAL_RATING = 100;
 const INITIAL_RATING_4_LIGA = 150;
 const K_FACTOR_STAGES = {1: 30, 2: 26, 3: 22, 4: 18, 5: 14, default: 10};
 const PERFORMANCE_SCORE_EPSILON = 0.02;
+const PERFORMANCE_PRIOR_SETS = 6;
 
 // LocalStorage keys
 const MYSTATS_STORAGE_KEY = 'mystats_player_name';
@@ -842,7 +843,12 @@ function calculateRatingPerformance(entries) {
     const actualSets = validEntries.reduce((sum, e) => sum + e.scoreOwn, 0);
     if (totalSets <= 0) return null;
 
-    const targetSets = clamp(actualSets / totalSets, PERFORMANCE_SCORE_EPSILON, 1 - PERFORMANCE_SCORE_EPSILON) * totalSets;
+    // Raw tournament performance ratings are extremely volatile with tiny samples:
+    // a single 3:0 result is a 100% score, which would imply a huge/infinite rating.
+    // Add a small neutral prior (6 virtual sets at 50%) so one-match samples are
+    // confidence-adjusted, while larger rounds quickly converge to the raw value.
+    const adjustedScoreShare = (actualSets + PERFORMANCE_PRIOR_SETS * 0.5) / (totalSets + PERFORMANCE_PRIOR_SETS);
+    const targetSets = clamp(adjustedScoreShare, PERFORMANCE_SCORE_EPSILON, 1 - PERFORMANCE_SCORE_EPSILON) * totalSets;
     const opponentRatings = validEntries.map(e => e.opponentRating);
     let low = Math.min(...opponentRatings) - 800;
     let high = Math.max(...opponentRatings) + 800;
