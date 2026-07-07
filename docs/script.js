@@ -1285,6 +1285,7 @@ function processData(currentRoundIdOverride = null) {
                 maxRating: initialRating, minRating: initialRating,
                 team: teamName || 'N/A', lastPlayed: 'N/A', roundGain: 0,
                 latestRoundEffectiveness: null, latestRoundEffectivenessEntries: [],
+                effectivenessHistory: {}, effectivenessHistoryEntries: {},
                 bestWinOpponent: null, bestWinRating: -Infinity,
                 worstLossOpponent: null, worstLossRating: Infinity,
                 history: {}, matchDetails: []
@@ -1366,18 +1367,24 @@ function processData(currentRoundIdOverride = null) {
         }
         // --- FIXED LOGIC END ---
 
-        if (isLatestRound) {
-            pNamesA.forEach(n => {
-                if (players[n] && Array.isArray(players[n].latestRoundEffectivenessEntries)) {
-                    players[n].latestRoundEffectivenessEntries.push({opponentRating: Rb, scoreOwn: scoreA, totalSets: N});
-                }
-            });
-            pNamesB.forEach(n => {
-                if (players[n] && Array.isArray(players[n].latestRoundEffectivenessEntries)) {
-                    players[n].latestRoundEffectivenessEntries.push({opponentRating: Ra, scoreOwn: scoreB, totalSets: N});
-                }
-            });
+        const roundOrder = getRoundOrderFromStr(match.round);
+        const sOrder = getSeasonOrder(match.season);
+        const sDisp = match.season ? ` (${match.season})` : '';
+        const historyKey = `${sOrder}-${String(roundOrder).padStart(4, '0')}|${match.round}${sDisp}`;
+        const addEffectivenessEntry = (name, entry) => {
+            const player = players[name];
+            if (!player) return;
+            if (!player.effectivenessHistoryEntries[historyKey]) player.effectivenessHistoryEntries[historyKey] = [];
+            player.effectivenessHistoryEntries[historyKey].push(entry);
+            if (isLatestRound && Array.isArray(player.latestRoundEffectivenessEntries)) {
+                player.latestRoundEffectivenessEntries.push(entry);
+            }
+        };
 
+        pNamesA.forEach(n => addEffectivenessEntry(n, {opponentRating: Rb, scoreOwn: scoreA, totalSets: N}));
+        pNamesB.forEach(n => addEffectivenessEntry(n, {opponentRating: Ra, scoreOwn: scoreB, totalSets: N}));
+
+        if (isLatestRound) {
             // Filter out WO matches for upsets
             if (!isDoubles && match.player_a !== 'WO' && match.player_b !== 'WO') {
                 if (scoreA > scoreB && Rb > Ra) {
@@ -1495,6 +1502,11 @@ function processData(currentRoundIdOverride = null) {
 
     Object.values(players).forEach(p => {
         p.latestRoundEffectiveness = calculateRatingPerformance(p.latestRoundEffectivenessEntries);
+        p.effectivenessHistory = {};
+        Object.entries(p.effectivenessHistoryEntries || {}).forEach(([key, entries]) => {
+            const effectiveness = calculateRatingPerformance(entries);
+            if (Number.isFinite(effectiveness)) p.effectivenessHistory[key] = effectiveness;
+        });
     });
 
     return {players, roundsSet, totalSets, latestRoundName, latestRoundId, upsetsList};
@@ -3678,15 +3690,15 @@ function renderMatchList(matches, container, appendToProvided, playersData = nul
 }
 
 // Unified function to render rating line chart (shared by rating.html and mystats.html)
-function renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt = 0) {
+function renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt = 0, options = {}) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || typeof Chart === 'undefined') {
-        if (attempt < 8) setTimeout(() => renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt + 1), 120);
+        if (attempt < 8) setTimeout(() => renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt + 1, options), 120);
         return;
     }
     const rect = canvas.getBoundingClientRect();
     if ((rect.width < 2 || rect.height < 2) && attempt < 8) {
-        setTimeout(() => renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt + 1), 120);
+        setTimeout(() => renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt + 1, options), 120);
         return;
     }
     const ctx = canvas.getContext('2d');
@@ -3840,6 +3852,11 @@ function renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt = 
         });
     }
 
+    const extraDatasets = typeof options.getExtraDatasets === 'function'
+        ? options.getExtraDatasets({allKeys, labels, buildFilledSeries})
+        : (Array.isArray(options.extraDatasets) ? options.extraDatasets : []);
+    extraDatasets.filter(Boolean).forEach(dataset => datasets.push(dataset));
+
     // Destroy existing chart if it exists
     if (chartRefSetter && typeof chartRefSetter.get === 'function') {
         const existingChart = chartRefSetter.get();
@@ -3859,7 +3876,7 @@ function renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt = 
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: compareP !== null || datasets.length > 1 }
+                legend: { display: options.legendDisplay ?? (compareP !== null || datasets.length > 1) }
             },
             scales: {
                 y: {
@@ -3878,7 +3895,11 @@ function renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt = 
     if (chartRefSetter && typeof chartRefSetter.set === 'function') {
         chartRefSetter.set(newChart);
     }
-    
+
+    if (typeof options.afterRender === 'function') {
+        options.afterRender(newChart, {allKeys, labels, datasets});
+    }
+
     return newChart;
 }
 
@@ -3962,6 +3983,7 @@ function renderRatingPage() {
     let activeDerived = null;
     let comparePlayer = null;
     let compareDerived = null;
+    let ratingEffectivenessVisible = false;
 
     const normalizePlayerKey = (name) => (name || '').trim().toLowerCase();
     const playerLookup = {};
@@ -4551,6 +4573,7 @@ function renderRatingPage() {
         if (activeDerived) activeDerived.label = p.name;
         comparePlayer = null;
         compareDerived = null;
+        ratingEffectivenessVisible = false;
         if (compareInput) compareInput.value = '';
         setCompareStatus('');
         const playerRanking = ratingRanking.get(normalizePlayerKey(p.name)) || '?';
@@ -4611,10 +4634,69 @@ function renderRatingPage() {
     };
 
     const renderLineChart = (p, compareP = null, attempt = 0) => {
+        const effectivenessColor = getThemeVar('--color-warning', '#f59e0b');
+        const setupEffectivenessToggle = (chart) => {
+            const toggleBtn = document.getElementById('toggleRatingEffectivenessLineBtn');
+            if (!toggleBtn || !chart) return;
+            const datasetIndex = chart.data.datasets.findIndex(ds => ds.label === 'Efektivita');
+            const hasEffectivenessData = datasetIndex >= 0
+                && (chart.data.datasets[datasetIndex].data || []).some(value => Number.isFinite(value));
+
+            toggleBtn.hidden = !hasEffectivenessData;
+            toggleBtn.disabled = !hasEffectivenessData;
+            if (!hasEffectivenessData) return;
+
+            const syncToggleButton = () => {
+                toggleBtn.classList.toggle('is-active', ratingEffectivenessVisible);
+                toggleBtn.setAttribute('aria-pressed', ratingEffectivenessVisible ? 'true' : 'false');
+                toggleBtn.textContent = ratingEffectivenessVisible ? 'Skryť efektivitu' : 'Zobraziť efektivitu';
+                toggleBtn.title = ratingEffectivenessVisible ? 'Skryť efektivitu z grafu' : 'Pridať efektivitu do grafu';
+            };
+
+            syncToggleButton();
+            toggleBtn.onclick = () => {
+                ratingEffectivenessVisible = !ratingEffectivenessVisible;
+                if (typeof chart.setDatasetVisibility === 'function') {
+                    chart.setDatasetVisibility(datasetIndex, ratingEffectivenessVisible);
+                } else {
+                    chart.data.datasets[datasetIndex].hidden = !ratingEffectivenessVisible;
+                }
+                chart.update();
+                syncToggleButton();
+            };
+        };
+
         const chart = renderRatingLineChart(p, compareP, 'ratingChart', {
             get: () => chartRefs['line'],
             set: (chart) => { chartRefs['line'] = chart; }
-        }, attempt);
+        }, attempt, {
+            legendDisplay: compareP !== null,
+            afterRender: setupEffectivenessToggle,
+            getExtraDatasets: ({allKeys}) => {
+                const effectivenessHistory = p.effectivenessHistory || {};
+                const effectivenessData = allKeys.map(key => {
+                    const value = effectivenessHistory[key];
+                    return Number.isFinite(value) ? value : null;
+                });
+                if (!effectivenessData.some(value => Number.isFinite(value))) return [];
+                return [{
+                    label: 'Efektivita',
+                    data: effectivenessData,
+                    borderColor: effectivenessColor,
+                    backgroundColor: toRgba(effectivenessColor, 0.12),
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 2,
+                    pointBackgroundColor: effectivenessColor,
+                    tension: 0.25,
+                    fill: false,
+                    spanGaps: true,
+                    hidden: !ratingEffectivenessVisible
+                }];
+            }
+        });
+
+        setupEffectivenessToggle(chart);
     };
 
     const renderFormHistory = (p) => {
@@ -5830,6 +5912,7 @@ function renderMyStatsPage() {
     let currentPlayer = null;
     let myRatingChart = null;
     let myRadarChart = null;
+    let myEffectivenessVisible = false;
 
     // Show player selection screen
     const showSelectScreen = () => {
@@ -5929,10 +6012,64 @@ function renderMyStatsPage() {
     };
 
     const renderMyLineChart = (p, compareP = null, attempt = 0) => {
+        const effectivenessColor = getThemeVar('--color-warning', '#f59e0b');
+        const setupEffectivenessToggle = (chart) => {
+            const toggleBtn = document.getElementById('toggleEffectivenessLineBtn');
+            if (!toggleBtn || !chart) return;
+            const datasetIndex = chart.data.datasets.findIndex(ds => ds.label === 'Efektivita');
+            const hasEffectivenessData = datasetIndex >= 0
+                && (chart.data.datasets[datasetIndex].data || []).some(value => Number.isFinite(value));
+            toggleBtn.hidden = !hasEffectivenessData;
+            toggleBtn.disabled = !hasEffectivenessData;
+            if (!hasEffectivenessData) return;
+            const syncToggleButton = () => {
+                toggleBtn.classList.toggle('is-active', myEffectivenessVisible);
+                toggleBtn.setAttribute('aria-pressed', myEffectivenessVisible ? 'true' : 'false');
+                toggleBtn.textContent = myEffectivenessVisible ? 'Skryť efektivitu' : 'Zobraziť efektivitu';
+                toggleBtn.title = myEffectivenessVisible ? 'Skryť efektivitu z grafu' : 'Pridať efektivitu do grafu';
+            };
+            syncToggleButton();
+            toggleBtn.onclick = () => {
+                myEffectivenessVisible = !myEffectivenessVisible;
+                if (typeof chart.setDatasetVisibility === 'function') {
+                    chart.setDatasetVisibility(datasetIndex, myEffectivenessVisible);
+                } else {
+                    chart.data.datasets[datasetIndex].hidden = !myEffectivenessVisible;
+                }
+                chart.update();
+                syncToggleButton();
+            };
+        };
         const chart = renderRatingLineChart(p, compareP, 'myRatingChart', {
             get: () => myRatingChart,
             set: (chart) => { myRatingChart = chart; }
-        }, attempt);
+        }, attempt, {
+            legendDisplay: compareP !== null,
+            afterRender: setupEffectivenessToggle,
+            getExtraDatasets: ({allKeys}) => {
+                const effectivenessHistory = p.effectivenessHistory || {};
+                const effectivenessData = allKeys.map(key => {
+                    const value = effectivenessHistory[key];
+                    return Number.isFinite(value) ? value : null;
+                });
+                if (!effectivenessData.some(value => Number.isFinite(value))) return [];
+                return [{
+                    label: 'Efektivita',
+                    data: effectivenessData,
+                    borderColor: effectivenessColor,
+                    backgroundColor: toRgba(effectivenessColor, 0.12),
+                    borderWidth: 2,
+                    borderDash: [6, 4],
+                    pointRadius: 2,
+                    pointBackgroundColor: effectivenessColor,
+                    tension: 0.25,
+                    fill: false,
+                    spanGaps: true,
+                    hidden: !myEffectivenessVisible
+                }];
+            }
+        });
+        setupEffectivenessToggle(chart);
     };
 
     // Track current derived stats for comparison
@@ -6601,6 +6738,7 @@ function renderMyStatsPage() {
         document.getElementById('myCurrentStreak').textContent = streak.current > 0 ? `Aktuálna: ${streak.current}` : 'Žiadna aktívna';
 
         // Render charts and other sections
+        myEffectivenessVisible = false;
         setTimeout(() => renderMyLineChart(p), 100);
         setTimeout(() => renderMyRadarChart(p), 150);
         renderRecentMatches(p, players);

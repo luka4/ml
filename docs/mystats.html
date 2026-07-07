@@ -135,7 +135,8 @@
             <!-- Personal Rating Chart -->
             <section class="mystats-card">
                 <h3 class="mystats-section-title">📈 Vývoj Ratingu</h3>
-                <div class="chart-container">
+                <div class="chart-container chart-container--with-toggle">
+                    <button type="button" id="toggleEffectivenessLineBtn" class="chart-toggle-btn" aria-pressed="false" title="Pridať efektivitu do grafu" hidden>Zobraziť efektivitu</button>
                     <canvas id="myRatingChart"></canvas>
                 </div>
             </section>

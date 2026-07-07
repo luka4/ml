@@ -586,6 +586,39 @@ tbody td:nth-child(2) {
   border-radius: 5px;
 }
 
+.chart-toggle-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 7px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.chart-toggle-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-warning, #f59e0b);
+}
+
+.chart-toggle-btn.is-active {
+  background: var(--color-warning, #f59e0b);
+  border-color: var(--color-warning, #f59e0b);
+  color: white;
+}
+
+.chart-toggle-btn[hidden] {
+  display: none;
+}
+
 #ratingChart {
   height: 300px !important;
   width: 100% !important;
@@ -1226,5 +1259,3 @@ tbody td:nth-child(2) {
     margin-top: 2px;
   }
 }
-
-
