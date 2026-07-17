@@ -863,6 +863,28 @@ function calculateRatingPerformance(entries) {
     return (low + high) / 2;
 }
 
+// Full per-round effectiveness history is only needed for charts — compute on demand.
+function ensurePlayerEffectivenessHistory(player) {
+    if (!player) return {};
+    if (player._effectivenessHistoryReady) return player.effectivenessHistory || {};
+
+    const history = {};
+    Object.entries(player.effectivenessHistoryEntries || {}).forEach(([key, entries]) => {
+        const effectiveness = calculateRatingPerformance(entries);
+        if (Number.isFinite(effectiveness)) history[key] = effectiveness;
+    });
+    player.effectivenessHistory = history;
+    player._effectivenessHistoryReady = true;
+    return history;
+}
+
+// processData is expensive (~4k matches) and previously recomputed on every call.
+// Cache by round override so achievements / highlights reuse the same pass.
+const processDataCache = new Map();
+function clearProcessDataCache() {
+    processDataCache.clear();
+}
+
 // Score distribution calculation for match predictions
 function getScoreDistribution(probWin) {
     const p = Math.max(0, Math.min(1, probWin || 0));
@@ -1257,6 +1279,9 @@ function getThisWeekRoundId(matches, today = new Date()) {
 }
 
 function processData(currentRoundIdOverride = null) {
+    const cacheKey = currentRoundIdOverride == null ? '__default__' : String(currentRoundIdOverride);
+    if (processDataCache.has(cacheKey)) return processDataCache.get(cacheKey);
+
     const players = {};
     const roundsSet = new Set();
     const upsetsList = [];
@@ -1506,16 +1531,17 @@ function processData(currentRoundIdOverride = null) {
         updateSide(pNamesB, scoreB, scoreA, diffB, diffA, displayDeltaA, pNamesA, match.player_a_team, match.player_b_team, oppRatingBeforeB);
     });
 
+    // Only the latest-round value is needed for tables/highlights. Full history
+    // (binary search per player×round) is deferred via ensurePlayerEffectivenessHistory.
     Object.values(players).forEach(p => {
         p.latestRoundEffectiveness = calculateRatingPerformance(p.latestRoundEffectivenessEntries);
         p.effectivenessHistory = {};
-        Object.entries(p.effectivenessHistoryEntries || {}).forEach(([key, entries]) => {
-            const effectiveness = calculateRatingPerformance(entries);
-            if (Number.isFinite(effectiveness)) p.effectivenessHistory[key] = effectiveness;
-        });
+        p._effectivenessHistoryReady = false;
     });
 
-    return {players, roundsSet, totalSets, latestRoundName, latestRoundId, upsetsList};
+    const result = {players, roundsSet, totalSets, latestRoundName, latestRoundId, upsetsList};
+    processDataCache.set(cacheKey, result);
+    return result;
 }
 
 // ============================================================
@@ -3912,7 +3938,12 @@ function renderRatingLineChart(p, compareP, canvasId, chartRefSetter, attempt = 
 // --- RATING PAGE ---
 function renderRatingPage() {
     const {players} = processData();
-    const achievementsByPlayer = getLeagueAchievementsByPlayer();
+    // Achievements need many processData(roundId) passes — do not block first paint.
+    let achievementsByPlayer = null;
+    const ensureAchievementsByPlayer = () => {
+        if (!achievementsByPlayer) achievementsByPlayer = getLeagueAchievementsByPlayer();
+        return achievementsByPlayer;
+    };
     
     // Helper function to get rating color group priority
     // Green (21+ matches) = 3, Orange (11-20 matches) = 2, Red (0-10 matches) = 1
@@ -4129,7 +4160,7 @@ function renderRatingPage() {
         const section = document.getElementById('playerAchievementsSection');
         const grid = document.getElementById('playerAchievementsGrid');
         if (!section || !grid || !player) return;
-        const badges = achievementsByPlayer[normalizePlayerKey(player.name)] || [];
+        const badges = ensureAchievementsByPlayer()[normalizePlayerKey(player.name)] || [];
         const hasBadges = renderAchievementsBadges(grid, badges, { mergeDuplicateBadges: true });
         section.style.display = hasBadges ? '' : 'none';
     };
@@ -4679,7 +4710,7 @@ function renderRatingPage() {
             legendDisplay: compareP !== null,
             afterRender: setupEffectivenessToggle,
             getExtraDatasets: ({allKeys}) => {
-                const effectivenessHistory = p.effectivenessHistory || {};
+                const effectivenessHistory = ensurePlayerEffectivenessHistory(p);
                 const effectivenessData = allKeys.map(key => {
                     const value = effectivenessHistory[key];
                     return Number.isFinite(value) ? value : null;
@@ -5048,6 +5079,15 @@ function renderRatingPage() {
     }
     renderTable();
     initTeamFilter();
+    // Warm achievements after first paint so modal opens stay snappy without blocking the table.
+    const warmAchievements = () => {
+        try { ensureAchievementsByPlayer(); } catch (e) { console.error(e); }
+    };
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(warmAchievements, { timeout: 2500 });
+    } else {
+        setTimeout(warmAchievements, 0);
+    }
     openPlayerFromUrl();
 }
 
@@ -6053,7 +6093,7 @@ function renderMyStatsPage() {
             legendDisplay: compareP !== null,
             afterRender: setupEffectivenessToggle,
             getExtraDatasets: ({allKeys}) => {
-                const effectivenessHistory = p.effectivenessHistory || {};
+                const effectivenessHistory = ensurePlayerEffectivenessHistory(p);
                 const effectivenessData = allKeys.map(key => {
                     const value = effectivenessHistory[key];
                     return Number.isFinite(value) ? value : null;

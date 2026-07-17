@@ -1,0 +1,26 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Capacitor Outputs
+# We ignore the 'public' folder inside android because it is regenerated from /docs
+android/app/src/main/assets/public
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+
+# Android Specific
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.iml
