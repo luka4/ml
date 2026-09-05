@@ -1746,9 +1746,27 @@ a {
 }
 
 @media (max-width: 600px) {
-  /* No room beside the badge on a phone: the sidebar menu carries it. */
+  /* A phone has no room on the right - the title already reaches the badge
+     there - so the icon takes the gap between the hamburger and the title,
+     and the badge stays exactly where it has always been. */
   .nav-spinbook {
-    display: none;
+    left: 54px;
+    right: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+  }
+
+  .nav-spinbook:hover {
+    transform: translateY(-50%) scale(1.06);
+  }
+
+  .nav-spinbook img {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
   }
 
   .top-nav.has-spinbook .nav-badge {
@@ -1775,6 +1793,15 @@ a {
     width: 22px;
     height: 22px;
     border-radius: 6px;
+  }
+}
+
+/* Narrower than this the centred title reaches back into that gap - it
+   already runs under the badge on its own here - so there is nowhere left to
+   put the icon and the menu entry carries it alone. */
+@media (max-width: 374px) {
+  .nav-spinbook {
+    display: none;
   }
 }
 
