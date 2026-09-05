@@ -3,9 +3,10 @@
  *
  * Two quiet pointers at the other app from the same author:
  *
- *   1. a slim strip at the bottom of the header, on every page - permanent,
- *      part of the nav bar, so it never covers anything;
- *   2. a small card in the bottom corner that can be closed for good.
+ *   1. an icon in the header, on every page - beside the "Aktualizované"
+ *      badge on a wide screen, and as a menu entry in the mobile sidebar,
+ *      where the header itself has no room left;
+ *   2. a small card in the bottom corner that can be closed.
  *
  * Everything visitor-facing lives in PROMO below, so the wording, the link or
  * the logo can be changed in one place.
@@ -15,8 +16,8 @@
         url: 'https://getspinbook.com/download.html',
         logo: 'media/spinbook-logo.svg',
         title: 'Vyskúšajte SpinBook',
-        // Second line of the card, and the tail of the header strip. Hidden on
-        // narrow screens, where only the title is shown.
+        // Second line of the card. Hidden on narrow screens, where only the
+        // title is shown.
         subtitle: 'Ďalšia appka od tvorcov tejto stránky'
     };
 
@@ -41,34 +42,49 @@
         new DOMParser().parseFromString(html, 'text/html').body.firstElementChild;
 
     // ------------------------------------------------------------------
-    // Header strip
+    // Header
     // ------------------------------------------------------------------
 
-    const buildNavPromo = () => parseHtml(`
-        <a class="nav-promo" href="${PROMO.url}" target="_blank" rel="noopener">
-            <img class="nav-promo__logo" src="${PROMO.logo}" alt="" width="18" height="18">
-            <span class="nav-promo__title">${PROMO.title}</span>
-            <span class="nav-promo__tail">- ${PROMO.subtitle.toLowerCase()}</span>
-            ${ARROW_SVG}
+    // On a wide screen the icon sits at the right end of the nav bar, next to
+    // the "Aktualizované" badge; the has-spinbook class on the nav is what
+    // steps that badge left to make room, so the header is left alone if this
+    // script never runs.
+    const buildNavIcon = () => parseHtml(`
+        <a class="nav-spinbook" href="${PROMO.url}" target="_blank" rel="noopener"
+           title="${PROMO.title}" aria-label="${PROMO.title}">
+            <img src="${PROMO.logo}" alt="" width="28" height="28">
         </a>`);
 
-    // The nav is injected by script.js, so the strip is added once it shows up
-    // and again if the nav is ever re-rendered.
-    const mountNavPromo = () => {
+    // Below 600px the header is down to a hamburger, the title and the badge,
+    // so the icon hides and the sidebar menu carries the link instead.
+    const buildSidebarLink = () => parseHtml(`
+        <a class="mobile-nav-link mobile-nav-link--spinbook" href="${PROMO.url}"
+           target="_blank" rel="noopener" style="--stagger-index: 9">
+            <img src="${PROMO.logo}" alt="" width="22" height="22">
+            <span>SpinBook</span>
+        </a>`);
+
+    // The nav is injected by script.js, so both are added once it shows up and
+    // again if it is ever re-rendered.
+    const mountHeaderPromo = () => {
         const container = document.getElementById('mainNavContainer');
         if (!container) return;
 
-        const addStrip = () => {
+        const decorate = () => {
             const nav = document.getElementById('mainNav');
-            if (!nav || nav.querySelector('.nav-promo')) return;
+            if (nav && !nav.querySelector('.nav-spinbook')) {
+                nav.appendChild(buildNavIcon());
+                nav.classList.add('has-spinbook');
+            }
 
-            nav.appendChild(buildNavPromo());
-            // The nav just got taller - let the page re-measure its offset.
-            if (typeof updateLayout === 'function') updateLayout();
+            const menu = container.querySelector('.mobile-nav-links');
+            if (menu && !menu.querySelector('.mobile-nav-link--spinbook')) {
+                menu.appendChild(buildSidebarLink());
+            }
         };
 
-        addStrip();
-        new MutationObserver(addStrip).observe(container, { childList: true, subtree: true });
+        decorate();
+        new MutationObserver(decorate).observe(container, { childList: true, subtree: true });
     };
 
     // ------------------------------------------------------------------
@@ -156,7 +172,7 @@
 
     const init = () => {
         if (EXCLUDED_PAGE_IDS.includes(document.body.id)) return;
-        mountNavPromo();
+        mountHeaderPromo();
         mountCard();
     };
 
