@@ -1681,3 +1681,189 @@ a {
     flex: 1;
   }
 }
+
+/* ============================================================
+   SpinBook promo (injected by spinbook-promo.js)
+   ============================================================ */
+
+/* Slim strip along the bottom of the fixed header. */
+.nav-promo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 -10px;
+  padding: 5px 12px;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.nav-promo:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: var(--color-text-inverse);
+}
+
+.nav-promo__logo {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+}
+
+.nav-promo__title {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.nav-promo__tail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+.nav-promo .spinbook-promo__arrow {
+  width: 14px;
+  height: 14px;
+  color: currentColor;
+}
+
+.nav-promo:hover .spinbook-promo__arrow {
+  transform: translateX(3px);
+}
+
+@media (max-width: 600px) {
+  .nav-promo {
+    gap: 6px;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+  }
+
+  .nav-promo__tail {
+    display: none;
+  }
+}
+
+/* Card in the bottom corner. */
+.spinbook-promo {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  max-width: calc(100vw - 32px);
+  padding-right: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  box-shadow: 0 6px 20px rgba(17, 24, 39, 0.14);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.2s ease;
+}
+
+.spinbook-promo.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.spinbook-promo:hover {
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.2);
+}
+
+.spinbook-promo__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px 8px 10px;
+  color: var(--color-text);
+  text-decoration: none;
+  min-width: 0;
+}
+
+.spinbook-promo__logo {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+
+.spinbook-promo__copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.spinbook-promo__title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.spinbook-promo__subtitle {
+  font-size: 0.74rem;
+  line-height: 1.25;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spinbook-promo__arrow {
+  flex-shrink: 0;
+  color: var(--color-accent);
+  transition: transform 0.2s ease;
+}
+
+.spinbook-promo__link:hover .spinbook-promo__arrow {
+  transform: translateX(3px);
+}
+
+.spinbook-promo__close {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted-2);
+  font-family: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.spinbook-promo__close:hover {
+  background-color: var(--color-row-hover);
+  color: var(--color-text);
+}
+
+@media (max-width: 600px) {
+  .spinbook-promo {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .spinbook-promo__subtitle {
+    display: none;
+  }
+
+  .spinbook-promo__title {
+    font-size: 0.82rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinbook-promo {
+    transition: none;
+    transform: none;
+  }
+}

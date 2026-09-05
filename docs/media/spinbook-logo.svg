@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="SpinBook">
+    <defs>
+        <linearGradient id="spinbookMark" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#3b82f6"/>
+            <stop offset="1" stop-color="#6366f1"/>
+        </linearGradient>
+    </defs>
+    <rect width="64" height="64" rx="16" fill="url(#spinbookMark)"/>
+    <path d="M7 34.5c8-3.8 16-3.8 25 .9 9-4.7 17-4.7 25-.9v13.6c-8-3.8-16-3.8-25 .9-9-4.7-17-4.7-25-.9z" fill="#ffffff"/>
+    <path d="M32 35.4v13.6" stroke="#6366f1" stroke-width="2.4" stroke-linecap="round" opacity="0.3"/>
+    <path d="M16.5 17.5c6-6.2 15.6-6 21.5.4" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" opacity="0.5"/>
+    <circle cx="40" cy="19.5" r="7.5" fill="#ffffff"/>
+</svg>
