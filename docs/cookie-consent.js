@@ -54,7 +54,7 @@
 
         const text = document.createElement('p');
         text.className = 'cookie-banner__text';
-        text.textContent = 'Používame cookies.';
+        text.textContent = 'Používame cookies na meranie návštevnosti (Google Analytics).';
 
         const actions = document.createElement('div');
         actions.className = 'cookie-banner__actions';
