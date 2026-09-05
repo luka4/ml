@@ -2,6 +2,8 @@
  * Cookie consent + Google Analytics loader.
  * GA is only loaded after the visitor accepts. The choice is remembered in
  * localStorage, so the banner is shown only until a decision is made.
+ * The choice can be changed at any time on cookies.html, which drives this
+ * module through window.CookieConsent.
  */
 (function () {
     const GA_ID = 'G-V448ND6YC6';
@@ -44,6 +46,24 @@
         gtag('config', GA_ID);
     };
 
+    // Withdrawing consent should also get rid of what GA already stored.
+    const clearAnalyticsCookies = () => {
+        const host = location.hostname;
+        const domains = ['', host, '.' + host];
+        const parts = host.split('.');
+        if (parts.length > 2) domains.push('.' + parts.slice(-2).join('.'));
+
+        document.cookie.split(';').forEach((entry) => {
+            const name = entry.split('=')[0].trim();
+            if (!/^_ga/.test(name) && name !== '_gid') return;
+
+            domains.forEach((domain) => {
+                document.cookie = name + '=; max-age=0; path=/' +
+                    (domain ? '; domain=' + domain : '');
+            });
+        });
+    };
+
     const buildBanner = () => {
         const banner = document.createElement('div');
         banner.className = 'cookie-banner';
@@ -69,14 +89,8 @@
         acceptBtn.className = 'cookie-banner__btn cookie-banner__btn--accept';
         acceptBtn.textContent = 'Súhlasím';
 
-        const decide = (value) => {
-            saveConsent(value);
-            if (value === 'accepted') loadAnalytics();
-            banner.remove();
-        };
-
-        declineBtn.addEventListener('click', () => decide('declined'));
-        acceptBtn.addEventListener('click', () => decide('accepted'));
+        declineBtn.addEventListener('click', () => setConsent('declined'));
+        acceptBtn.addEventListener('click', () => setConsent('accepted'));
 
         actions.appendChild(declineBtn);
         actions.appendChild(acceptBtn);
@@ -89,6 +103,24 @@
     const showBanner = () => {
         if (document.getElementById('cookieBanner')) return;
         document.body.appendChild(buildBanner());
+    };
+
+    const setConsent = (value) => {
+        saveConsent(value);
+        if (value === 'accepted') {
+            loadAnalytics();
+        } else {
+            clearAnalyticsCookies();
+        }
+        document.getElementById('cookieBanner')?.remove();
+    };
+
+    // Used by cookies.html so the choice can be reviewed and changed later.
+    window.CookieConsent = {
+        get: readConsent,
+        set: setConsent,
+        showBanner: showBanner,
+        isAnalyticsLoaded: () => analyticsLoaded
     };
 
     const consent = readConsent();
