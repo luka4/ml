@@ -1621,8 +1621,16 @@ a {
 
 .cookie-banner__actions {
   display: flex;
+  align-items: center;
   gap: 10px;
   flex-shrink: 0;
+}
+
+.cookie-banner__link {
+  color: var(--color-text-inverse);
+  font-size: 0.9rem;
+  text-decoration: underline;
+  white-space: nowrap;
 }
 
 .cookie-banner__btn {
@@ -1661,6 +1669,11 @@ a {
   }
 
   .cookie-banner__actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .cookie-banner__link {
     width: 100%;
   }
 
