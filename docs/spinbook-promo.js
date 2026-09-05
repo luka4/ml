@@ -25,7 +25,7 @@
 
     // How long a closed card stays closed. null = for good; a number of days
     // brings it back after that long.
-    const DISMISS_DAYS = null;
+    const DISMISS_DAYS = 7;
 
     // Pages that are not for visitors get nothing.
     const EXCLUDED_PAGE_IDS = ['page-admin'];
