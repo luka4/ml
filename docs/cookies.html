@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Cookie consent + Google Analytics (loaded only after consent) -->
+    <!-- Cookie consent (analytics and notifications load only after consent) -->
     <script src="cookie-consent.js"></script>
     <title>Nastavenia cookies | Košická Miniliga</title>
-    <meta name="description" content="Nastavenia súborov cookie na miniliga.online - povoľte alebo zakážte analytické cookies.">
+    <meta name="description" content="Nastavenia súborov cookie na miniliga.online - povoľte alebo zakážte analytické cookies a notifikácie.">
     <meta name="robots" content="noindex">
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="styles/loader.css">
@@ -25,9 +25,16 @@
             color: var(--color-text);
         }
 
-        .cookies-page p {
+        .cookies-page > p {
             line-height: 1.6;
             color: var(--color-text-subtle);
+        }
+
+        .cookies-quick {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 1.25rem;
         }
 
         .cookies-card {
@@ -36,18 +43,88 @@
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-sm);
             padding: 20px;
-            margin-top: 1.5rem;
+            margin-top: 1.25rem;
+        }
+
+        .cookies-card__head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
         }
 
         .cookies-card h2 {
-            margin: 0 0 0.35rem;
+            margin: 0;
             font-size: 1.15rem;
             color: var(--color-text);
         }
 
         .cookies-card p {
-            margin: 0.35rem 0 0;
+            margin: 0.5rem 0 0;
             font-size: 0.95rem;
+            line-height: 1.55;
+            color: var(--color-text-subtle);
+        }
+
+        /* Switch */
+        .cookies-switch {
+            position: relative;
+            flex-shrink: 0;
+            width: 52px;
+            height: 30px;
+        }
+
+        .cookies-switch input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .cookies-switch__track {
+            position: absolute;
+            inset: 0;
+            border-radius: 999px;
+            background-color: var(--color-border-strong);
+            transition: background-color 0.2s ease;
+            pointer-events: none;
+        }
+
+        .cookies-switch__track::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--color-surface);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease;
+        }
+
+        .cookies-switch input:checked + .cookies-switch__track {
+            background-color: var(--color-accent);
+        }
+
+        .cookies-switch input:checked + .cookies-switch__track::after {
+            transform: translateX(22px);
+        }
+
+        .cookies-switch input:focus-visible + .cookies-switch__track {
+            outline: 2px solid var(--color-accent);
+            outline-offset: 2px;
+        }
+
+        .cookies-switch input:disabled {
+            cursor: default;
+        }
+
+        .cookies-switch input:disabled + .cookies-switch__track {
+            background-color: var(--color-success);
+            opacity: 0.55;
         }
 
         .cookies-status {
@@ -74,13 +151,6 @@
             color: var(--color-warning-text);
         }
 
-        .cookies-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 18px;
-        }
-
         .cookies-btn {
             padding: 10px 20px;
             border: 1px solid transparent;
@@ -92,37 +162,45 @@
             transition: background-color 0.2s ease, border-color 0.2s ease;
         }
 
-        .cookies-btn--accept {
+        .cookies-btn--primary {
             background-color: var(--color-accent);
             color: var(--color-text-inverse);
         }
 
-        .cookies-btn--accept:hover {
+        .cookies-btn--primary:hover {
             background-color: var(--color-accent-hover);
         }
 
-        .cookies-btn--decline {
+        .cookies-btn--secondary {
             background-color: var(--color-surface);
             border-color: var(--color-border-strong);
             color: var(--color-text);
         }
 
-        .cookies-btn--decline:hover {
+        .cookies-btn--secondary:hover {
             border-color: var(--color-muted);
         }
 
-        .cookies-btn[disabled] {
-            opacity: 0.5;
-            cursor: default;
+        .cookies-save {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px;
+            margin-top: 1.5rem;
         }
 
         .cookies-saved {
-            margin-top: 14px;
             padding: 10px 14px;
             border-radius: var(--radius-md);
             background-color: var(--color-info-soft);
             color: var(--color-info-text);
             font-size: 0.9rem;
+        }
+
+        .cookies-meta {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--color-muted);
         }
 
         .cookies-table-wrap {
@@ -160,10 +238,15 @@
         .cookies-back:hover {
             text-decoration: underline;
         }
+
+        @media (max-width: 600px) {
+            .cookies-quick .cookies-btn,
+            .cookies-save .cookies-btn {
+                flex: 1;
+            }
+        }
     </style>
     <script src="auth.js"></script>
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script src="onesignal-init.js" defer></script>
 </head>
 <body id="page-cookies" class="loading">
 
@@ -187,35 +270,69 @@
         <div class="cookies-page">
             <h1>Nastavenia cookies</h1>
             <p>
-                Na tejto stránke si môžete kedykoľvek zmeniť svoje rozhodnutie o súboroch cookie.
-                Bez vášho súhlasu nenačítame Google Analytics a žiadne analytické cookies sa neuložia.
+                Tu si môžete kedykoľvek zmeniť, čo na stránke povolíte. Voliteľné služby
+                nenačítame skôr, než ich zapnete, a keď ich vypnete, ich údaje z prehliadača
+                odstránime.
             </p>
 
-            <div class="cookies-card">
-                <h2>Nevyhnutné</h2>
-                <p>
-                    Potrebné na fungovanie stránky - ukladá sa len vaše rozhodnutie o cookies
-                    a vaše nastavenia (napríklad zvolený tím). Tieto údaje zostávajú vo vašom
-                    prehliadači a nikam sa neodosielajú.
-                </p>
-                <span class="cookies-status cookies-status--on">Vždy aktívne</span>
+            <div class="cookies-quick">
+                <button type="button" class="cookies-btn cookies-btn--primary" id="acceptAll">Prijať všetko</button>
+                <button type="button" class="cookies-btn cookies-btn--secondary" id="rejectAll">Odmietnuť všetko</button>
             </div>
 
             <div class="cookies-card">
-                <h2>Analytické (Google Analytics)</h2>
+                <div class="cookies-card__head">
+                    <h2>Nevyhnutné</h2>
+                    <label class="cookies-switch">
+                        <input type="checkbox" checked disabled aria-label="Nevyhnutné - vždy aktívne">
+                        <span class="cookies-switch__track"></span>
+                    </label>
+                </div>
+                <p>
+                    Potrebné na fungovanie stránky. Ukladá sa len vaše rozhodnutie o cookies
+                    a nastavenia, ktoré si sami zvolíte (napríklad váš hráč alebo tím).
+                    Tieto údaje zostávajú vo vašom prehliadači a nikam sa neodosielajú.
+                </p>
+                <span class="cookies-status cookies-status--on">Vždy aktívne</span>
+
+                <div class="cookies-table-wrap">
+                    <table class="cookies-table">
+                        <thead>
+                            <tr>
+                                <th>Názov</th>
+                                <th>Účel</th>
+                                <th>Platnosť</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>cookieConsent</td>
+                                <td>Vaše rozhodnutie o cookies</td>
+                                <td>Kým ho nezmažete</td>
+                            </tr>
+                            <tr>
+                                <td>mystats_player_name, myteam_team_name</td>
+                                <td>Váš zvolený hráč a tím</td>
+                                <td>Kým ho nezmažete</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="cookies-card">
+                <div class="cookies-card__head">
+                    <h2>Analytické - Google Analytics</h2>
+                    <label class="cookies-switch">
+                        <input type="checkbox" id="analyticsToggle" aria-label="Analytické cookies">
+                        <span class="cookies-switch__track"></span>
+                    </label>
+                </div>
                 <p>
                     Pomáhajú nám zistiť, koľko ľudí stránku navštívi a ktoré časti používajú.
                     Údaje spracúva spoločnosť Google.
                 </p>
-
                 <span class="cookies-status" id="analyticsStatus">Načítava sa...</span>
-
-                <div class="cookies-actions">
-                    <button type="button" class="cookies-btn cookies-btn--accept" id="acceptCookies">Povoliť</button>
-                    <button type="button" class="cookies-btn cookies-btn--decline" id="declineCookies">Zakázať</button>
-                </div>
-
-                <div class="cookies-saved" id="cookiesSaved" hidden></div>
 
                 <div class="cookies-table-wrap">
                     <table class="cookies-table">
@@ -241,6 +358,54 @@
                     </table>
                 </div>
             </div>
+
+            <div class="cookies-card">
+                <div class="cookies-card__head">
+                    <h2>Notifikácie - OneSignal</h2>
+                    <label class="cookies-switch">
+                        <input type="checkbox" id="notificationsToggle" aria-label="Notifikácie">
+                        <span class="cookies-switch__track"></span>
+                    </label>
+                </div>
+                <p>
+                    Umožňujú posielať upozornenia na nové výsledky. Notifikácie zabezpečuje
+                    služba OneSignal, ktorá si vo vašom prehliadači uloží identifikátor
+                    odberu a zaregistruje service worker. Samotné upozornenia vám prídu, až
+                    keď ich potvrdíte aj v prehliadači.
+                </p>
+                <span class="cookies-status" id="notificationsStatus">Načítava sa...</span>
+
+                <div class="cookies-table-wrap">
+                    <table class="cookies-table">
+                        <thead>
+                            <tr>
+                                <th>Názov</th>
+                                <th>Účel</th>
+                                <th>Platnosť</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ONE_SIGNAL_SDK_DB</td>
+                                <td>Identifikátor odberu notifikácií</td>
+                                <td>Kým odber nezrušíte</td>
+                            </tr>
+                            <tr>
+                                <td>OneSignalSDKWorker.js</td>
+                                <td>Service worker prijímajúci upozornenia</td>
+                                <td>Kým odber nezrušíte</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="cookies-save">
+                <button type="button" class="cookies-btn cookies-btn--primary" id="saveSettings">Uložiť nastavenia</button>
+                <div class="cookies-saved" id="cookiesSaved" hidden></div>
+            </div>
+
+            <p class="cookies-meta" id="cookiesMeta"></p>
 
             <a href="index.html" class="cookies-back">← Späť na domovskú stránku</a>
         </div>
@@ -279,39 +444,70 @@
 
 <script>
     (function () {
-        const statusEl = document.getElementById('analyticsStatus');
+        const toggles = {
+            analytics: document.getElementById('analyticsToggle'),
+            notifications: document.getElementById('notificationsToggle')
+        };
+        const statuses = {
+            analytics: document.getElementById('analyticsStatus'),
+            notifications: document.getElementById('notificationsStatus')
+        };
         const savedEl = document.getElementById('cookiesSaved');
-        const acceptBtn = document.getElementById('acceptCookies');
-        const declineBtn = document.getElementById('declineCookies');
+        const metaEl = document.getElementById('cookiesMeta');
 
-        const STATUS = {
-            accepted: {text: 'Povolené', modifier: 'cookies-status--on'},
-            declined: {text: 'Zakázané', modifier: 'cookies-status--off'},
-            undecided: {text: 'Zatiaľ nerozhodnuté', modifier: 'cookies-status--undecided'}
+        const setStatus = (el, on, decided) => {
+            if (!decided) {
+                el.textContent = 'Zatiaľ nerozhodnuté';
+                el.className = 'cookies-status cookies-status--undecided';
+                return;
+            }
+            el.textContent = on ? 'Povolené' : 'Zakázané';
+            el.className = 'cookies-status ' + (on ? 'cookies-status--on' : 'cookies-status--off');
         };
 
+        // Reflects what is stored, so the page always shows the real state.
         const render = () => {
-            const consent = CookieConsent.get() || 'undecided';
-            const state = STATUS[consent] || STATUS.undecided;
+            const prefs = CookieConsent.get();
 
-            statusEl.textContent = state.text;
-            statusEl.className = 'cookies-status ' + state.modifier;
-            acceptBtn.disabled = consent === 'accepted';
-            declineBtn.disabled = consent === 'declined';
+            CookieConsent.CATEGORIES.forEach((name) => {
+                toggles[name].checked = prefs[name];
+                setStatus(statuses[name], prefs[name], prefs.decided);
+            });
+
+            metaEl.textContent = prefs.savedAt
+                ? 'Naposledy uložené: ' + new Date(prefs.savedAt).toLocaleString('sk-SK')
+                : 'Zatiaľ ste sa nerozhodli. Voliteľné služby sú vypnuté.';
         };
 
-        const choose = (value) => {
-            CookieConsent.set(value);
-            render();
-
+        const announce = (prefs) => {
+            const enabled = CookieConsent.CATEGORIES.filter((name) => prefs[name]);
             savedEl.hidden = false;
-            savedEl.textContent = value === 'accepted'
-                ? 'Uložené. Analytické cookies sú povolené.'
-                : 'Uložené. Analytické cookies sú zakázané a už uložené sa odstránili.';
+            savedEl.textContent = enabled.length
+                ? 'Uložené. Povolené: ' + enabled.map((name) => (
+                    name === 'analytics' ? 'analytické' : 'notifikácie'
+                )).join(', ') + '.'
+                : 'Uložené. Voliteľné služby sú vypnuté a ich údaje sme z prehliadača odstránili.';
         };
 
-        acceptBtn.addEventListener('click', () => choose('accepted'));
-        declineBtn.addEventListener('click', () => choose('declined'));
+        const apply = (prefs) => {
+            announce(CookieConsent.save(prefs));
+            render();
+        };
+
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            apply({
+                analytics: toggles.analytics.checked,
+                notifications: toggles.notifications.checked
+            });
+        });
+
+        document.getElementById('acceptAll').addEventListener('click', () => {
+            apply({analytics: true, notifications: true});
+        });
+
+        document.getElementById('rejectAll').addEventListener('click', () => {
+            apply({analytics: false, notifications: false});
+        });
 
         render();
     })();
