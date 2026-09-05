@@ -54,8 +54,7 @@
 
         const text = document.createElement('p');
         text.className = 'cookie-banner__text';
-        text.textContent = 'Používame cookies na anonymné meranie návštevnosti (Google Analytics). ' +
-            'Bez vášho súhlasu ich nenačítame.';
+        text.textContent = 'Používame cookies.';
 
         const actions = document.createElement('div');
         actions.className = 'cookie-banner__actions';
