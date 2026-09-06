@@ -1746,39 +1746,28 @@ a {
 }
 
 @media (max-width: 600px) {
-  /* Same order as on a wide screen: badge, then icon at the end. There is
-     only one row here, so the pair is centred on it. */
+  /* The header bar is one short row on a phone, shared with the hamburger,
+     the title and the badge, so the icon is dropped here - the labelled
+     entry in the sidebar menu below carries the promo instead. */
   .nav-spinbook {
-    right: 4px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 24px;
-    height: 24px;
-    border-radius: 7px;
+    display: none;
   }
 
-  .nav-spinbook:hover {
-    transform: translateY(-50%) scale(1.06);
-  }
-
-  .nav-spinbook img {
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
-  }
-
+  /* With no icon in the bar, the badge sits back where it does on pages the
+     promo never touches. */
   .top-nav.has-spinbook .nav-badge {
-    right: 34px;
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
   }
 
-  /* The centred title used to reach the badge on its own on every phone.
-     Moving it over beside the hamburger is what pays for the icon. */
+  /* The centred title reaches the badge on its own on a phone, so it stays
+     over beside the hamburger - with the room the icon used to take given
+     back to it. */
   .top-nav.has-spinbook .nav-title {
     text-align: left;
     padding-left: 56px;
-    padding-right: 130px;
+    padding-right: 110px;
     font-size: 0.95em;
     letter-spacing: 0.5px;
   }
