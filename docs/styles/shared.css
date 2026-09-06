@@ -1746,17 +1746,15 @@ a {
 }
 
 @media (max-width: 600px) {
-  /* A phone has no room on the right - the title already reaches the badge
-     there - so the icon takes the gap between the hamburger and the title,
-     and the badge stays exactly where it has always been. */
+  /* Same order as on a wide screen: badge, then icon at the end. There is
+     only one row here, so the pair is centred on it. */
   .nav-spinbook {
-    left: 54px;
-    right: auto;
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
   }
 
   .nav-spinbook:hover {
@@ -1764,15 +1762,25 @@ a {
   }
 
   .nav-spinbook img {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     border-radius: 6px;
   }
 
   .top-nav.has-spinbook .nav-badge {
-    right: 10px;
+    right: 34px;
     top: 50%;
     transform: translateY(-50%);
+  }
+
+  /* The centred title used to reach the badge on its own on every phone.
+     Moving it over beside the hamburger is what pays for the icon. */
+  .top-nav.has-spinbook .nav-title {
+    text-align: left;
+    padding-left: 56px;
+    padding-right: 130px;
+    font-size: 0.95em;
+    letter-spacing: 0.5px;
   }
 
   /* Ten entries no longer fit on a short phone, so the menu can scroll. */
@@ -1793,15 +1801,6 @@ a {
     width: 22px;
     height: 22px;
     border-radius: 6px;
-  }
-}
-
-/* Narrower than this the centred title reaches back into that gap - it
-   already runs under the badge on its own here - so there is nowhere left to
-   put the icon and the menu entry carries it alone. */
-@media (max-width: 374px) {
-  .nav-spinbook {
-    display: none;
   }
 }
 
