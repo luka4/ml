@@ -3,9 +3,9 @@
  *
  * Two quiet pointers at the other app from the same author:
  *
- *   1. an icon in the header, on every page - beside the "Aktualizované"
- *      badge on a wide screen, and as a menu entry in the mobile sidebar,
- *      where the header itself has no room left;
+ *   1. an icon in the header, on every page, at the right end of the bar
+ *      beside the "Aktualizované" badge, plus a labelled entry in the
+ *      mobile sidebar menu;
  *   2. a small card in the bottom corner that can be closed.
  *
  * Everything visitor-facing lives in PROMO below, so the wording, the link or
@@ -14,7 +14,10 @@
 (function () {
     const PROMO = {
         url: 'https://getspinbook.com/download.html',
-        logo: 'media/spinbook-logo.svg',
+        logo: 'https://getspinbook.com/assets/icon.png',
+        // Used if the icon above cannot be loaded, so the promo never shows a
+        // broken image.
+        logoFallback: 'media/spinbook-logo.svg',
         title: 'Vyskúšajte SpinBook',
         // Second line of the card. Hidden on narrow screens, where only the
         // title is shown.
@@ -41,6 +44,18 @@
     const parseHtml = (html) =>
         new DOMParser().parseFromString(html, 'text/html').body.firstElementChild;
 
+    // The logo is served from the other site, so a hiccup there must not leave
+    // a broken image sitting in the header.
+    const withLogoFallback = (root) => {
+        root.querySelectorAll('img').forEach((img) => {
+            img.addEventListener('error', () => {
+                if (img.src.endsWith(PROMO.logoFallback)) return;
+                img.src = PROMO.logoFallback;
+            }, { once: true });
+        });
+        return root;
+    };
+
     // ------------------------------------------------------------------
     // Header
     // ------------------------------------------------------------------
@@ -49,20 +64,20 @@
     // the "Aktualizované" badge; the has-spinbook class on the nav is what
     // steps that badge left to make room, so the header is left alone if this
     // script never runs.
-    const buildNavIcon = () => parseHtml(`
+    const buildNavIcon = () => withLogoFallback(parseHtml(`
         <a class="nav-spinbook" href="${PROMO.url}" target="_blank" rel="noopener"
            title="${PROMO.title}" aria-label="${PROMO.title}">
             <img src="${PROMO.logo}" alt="" width="28" height="28">
-        </a>`);
+        </a>`));
 
-    // Below 600px the header is down to a hamburger, the title and the badge,
-    // so the icon hides and the sidebar menu carries the link instead.
-    const buildSidebarLink = () => parseHtml(`
+    // The sidebar menu carries a labelled entry as well, for anyone who opens
+    // the menu rather than noticing the icon.
+    const buildSidebarLink = () => withLogoFallback(parseHtml(`
         <a class="mobile-nav-link mobile-nav-link--spinbook" href="${PROMO.url}"
            target="_blank" rel="noopener" style="--stagger-index: 9">
             <img src="${PROMO.logo}" alt="" width="22" height="22">
             <span>SpinBook</span>
-        </a>`);
+        </a>`));
 
     // The nav is injected by script.js, so both are added once it shows up and
     // again if it is ever re-rendered.
@@ -117,7 +132,7 @@
     };
 
     const buildCard = () => {
-        const card = parseHtml(`
+        const card = withLogoFallback(parseHtml(`
             <aside class="spinbook-promo" id="spinbookPromo" aria-label="${PROMO.title}">
                 <a class="spinbook-promo__link" href="${PROMO.url}" target="_blank" rel="noopener">
                     <img class="spinbook-promo__logo" src="${PROMO.logo}" alt="" width="34" height="34">
@@ -128,7 +143,7 @@
                     ${ARROW_SVG}
                 </a>
                 <button class="spinbook-promo__close" type="button" aria-label="Skryť odporúčanie">&times;</button>
-            </aside>`);
+            </aside>`));
 
         card.querySelector('.spinbook-promo__close').addEventListener('click', () => {
             rememberDismissal();
