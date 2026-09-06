@@ -3,9 +3,10 @@
  *
  * Two quiet pointers at the other app from the same author:
  *
- *   1. an icon in the header, on every page, at the right end of the bar
- *      beside the "Aktualizované" badge, plus a labelled entry in the
- *      mobile sidebar menu;
+ *   1. an icon in the header, at the right end of the bar beside the
+ *      "Aktualizované" badge - on tablets and wider only, since the phone
+ *      bar is a single crowded row - plus a labelled entry in the mobile
+ *      sidebar menu, which is where phones get the promo;
  *   2. a small card in the bottom corner that can be closed.
  *
  * Everything visitor-facing lives in PROMO below, so the wording, the link or
@@ -63,15 +64,17 @@
     // On a wide screen the icon sits at the right end of the nav bar, next to
     // the "Aktualizované" badge; the has-spinbook class on the nav is what
     // steps that badge left to make room, so the header is left alone if this
-    // script never runs.
+    // script never runs. Below the phone breakpoint the stylesheet hides the
+    // icon and the badge keeps its usual spot.
     const buildNavIcon = () => withLogoFallback(parseHtml(`
         <a class="nav-spinbook" href="${PROMO.url}" target="_blank" rel="noopener"
            title="${PROMO.title}" aria-label="${PROMO.title}">
             <img src="${PROMO.logo}" alt="" width="28" height="28">
         </a>`));
 
-    // The sidebar menu carries a labelled entry as well, for anyone who opens
-    // the menu rather than noticing the icon.
+    // The sidebar menu carries a labelled entry as well - the only place the
+    // promo shows in the header area on a phone, and on wider screens for
+    // anyone who opens the menu rather than noticing the icon.
     const buildSidebarLink = () => withLogoFallback(parseHtml(`
         <a class="mobile-nav-link mobile-nav-link--spinbook" href="${PROMO.url}"
            target="_blank" rel="noopener" style="--stagger-index: 9">
