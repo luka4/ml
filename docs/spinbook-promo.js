@@ -13,7 +13,7 @@
  */
 (function () {
     const PROMO = {
-        url: 'https://getspinbook.com/download.html',
+        url: 'https://getspinbook.com/sk/download.html',
         logo: 'https://getspinbook.com/assets/icon.png',
         // Used if the icon above cannot be loaded, so the promo never shows a
         // broken image.
