@@ -1043,9 +1043,62 @@ function getSeasonTeamPlayers(teamName, season, fallbackPlayers = [], playersDat
     return list.length ? list : fallbackPlayers;
 }
 
+// A player who is on a roster but has not played a single match yet. They belong
+// on the squad list, but they have no rating, so `hasPlayed()` keeps them out of
+// every average. Shape mirrors `initPlayer` so renderers can treat them alike.
+function makeRosterOnlyPlayer(name, teamName) {
+    return {
+        name, rating: INITIAL_RATING,
+        matches: 0, wins: 0, losses: 0,
+        setsWin: 0, setsLose: 0,
+        dMatches: 0, dWins: 0, dLosses: 0, dSetsWin: 0, dSetsLose: 0,
+        maxRating: INITIAL_RATING, minRating: INITIAL_RATING,
+        team: teamName || 'N/A', lastPlayed: 'N/A', roundGain: 0,
+        latestRoundEffectiveness: null, latestRoundEffectivenessEntries: [],
+        effectivenessHistory: {}, effectivenessHistoryEntries: {},
+        bestWinOpponent: null, bestWinRating: -Infinity,
+        worstLossOpponent: null, worstLossRating: Infinity,
+        history: {}, matchDetails: [],
+        rosterOnly: true
+    };
+}
+
+// Has this player actually played? Ratings and predictions must only ever be
+// averaged over these - a roster-only player carries a placeholder rating.
+function hasPlayed(p) {
+    return ((p?.matches || 0) + (p?.dMatches || 0)) > 0;
+}
+
+// Career numbers a player put up while playing for `teamName` specifically,
+// rather than across their whole career.
+function getPlayerStatsForTeam(player, teamName) {
+    const key = normalizeTeamKey(teamName);
+    const details = (player?.matchDetails || [])
+        .filter(m => normalizeTeamKey(m.own_team || player.team) === key);
+
+    let wins = 0, losses = 0, setsWin = 0, setsLose = 0;
+    details.forEach(m => {
+        const own = m.score_own || 0;
+        const opp = m.score_opp || 0;
+        if (own > opp) wins++;
+        else if (opp > own) losses++;
+        setsWin += own;
+        setsLose += opp;
+    });
+
+    const last = details[details.length - 1];
+    return {
+        matches: details.length,
+        wins, losses, setsWin, setsLose,
+        // The rating they carried when they last played for this team.
+        rating: last && Number.isFinite(last.rating_after) ? last.rating_after : null
+    };
+}
+
 // Groups players into a team -> roster map. When roster data covers `season`
 // (default: the current season) membership comes from the roster; teams the
-// roster does not mention keep the match-derived grouping.
+// roster does not mention keep the match-derived grouping. Registered players
+// who have not played yet are included as roster-only placeholders.
 function buildTeamMap(playerArr, season = undefined) {
     const useSeason = season === undefined ? getCurrentRosterSeason() : season;
     const rosterTeams = (useSeason && seasonRostersAvailable())
@@ -1069,10 +1122,14 @@ function buildTeamMap(playerArr, season = undefined) {
             const display = canonicalTeamName(entry.name);
             entry.players.forEach(name => {
                 const p = index.get(normalizeRosterName(name));
-                if (!p) return; // on the roster but has not played a match yet
-                push(display, p);
-                placed.add(p);
-                covered.add(key);
+                if (p) {
+                    push(display, p);
+                    placed.add(p);
+                    covered.add(key);
+                } else {
+                    // Registered for the season but yet to play a match.
+                    push(display, makeRosterOnlyPlayer(name, display));
+                }
             });
         });
 
@@ -3362,8 +3419,10 @@ function renderMatchList(matches, container, appendToProvided, playersData = nul
             return { activeRating: 0, overallRating: 0 };
         }
 
-        // Sort by activity (matches) then by rating
-        const sorted = [...teamPlayers].sort((a, b) => {
+        // Sort by activity (matches) then by rating, ignoring players who have not
+        // played yet - they only carry a placeholder rating.
+        const played = teamPlayers.filter(hasPlayed);
+        const sorted = [...played].sort((a, b) => {
             const actA = (a.matches + a.dMatches);
             const actB = (b.matches + b.dMatches);
             if (actB !== actA) return actB - actA;
@@ -3378,8 +3437,8 @@ function renderMatchList(matches, container, appendToProvided, playersData = nul
             : 0;
 
         // Overall rating (all players)
-        const overallRating = teamPlayers.length > 0
-            ? teamPlayers.reduce((sum, p) => sum + p.rating, 0) / teamPlayers.length
+        const overallRating = played.length > 0
+            ? played.reduce((sum, p) => sum + p.rating, 0) / played.length
             : 0;
 
         return { activeRating, overallRating };
@@ -5785,7 +5844,8 @@ function renderPredictionPage() {
             targetEl.innerHTML = `<div class="lineup-hint">Vyberte tím pre zobrazenie hráčov.</div>`;
             return;
         }
-        const roster = teamMap.get(teamName) || [];
+        // A prediction can only use players who have a real rating.
+        const roster = (teamMap.get(teamName) || []).filter(hasPlayed);
         if (roster.length === 0) {
             targetEl.innerHTML = `<div class="lineup-hint">Žiadni hráči k dispozícii.</div>`;
             return;
@@ -5830,7 +5890,8 @@ function renderPredictionPage() {
     };
 
     const collectLineup = (teamName, targetEl) => {
-        const roster = teamMap.get(teamName) || [];
+        // A prediction can only use players who have a real rating.
+        const roster = (teamMap.get(teamName) || []).filter(hasPlayed);
         const fallback = roster.slice(0, 4).map(p => p.name);
         const selectedNames = Array.from(targetEl?.querySelectorAll('input[type="checkbox"]:checked') || []).map(el => el.value);
         const namesRaw = selectedNames.length > 0 ? selectedNames : fallback;
@@ -7221,16 +7282,18 @@ function renderMyTeamPage() {
     };
 
     // Calculate team active rating (4 most active players)
+    // Players who have not played yet carry a placeholder rating - leave them out.
     const getActiveRating = (teamPlayers) => {
-        const active = teamPlayers.slice(0, 4);
+        const active = teamPlayers.filter(hasPlayed).slice(0, 4);
         if (active.length === 0) return 0;
         return active.reduce((sum, p) => sum + p.rating, 0) / active.length;
     };
 
-    // Calculate team overall rating (all players)
+    // Calculate team overall rating (all players who have played)
     const getOverallRating = (teamPlayers) => {
-        if (teamPlayers.length === 0) return 0;
-        return teamPlayers.reduce((sum, p) => sum + p.rating, 0) / teamPlayers.length;
+        const played = teamPlayers.filter(hasPlayed);
+        if (played.length === 0) return 0;
+        return played.reduce((sum, p) => sum + p.rating, 0) / played.length;
     };
 
     // Calculate team W/D/L record
@@ -7717,32 +7780,39 @@ function renderMyTeamPage() {
             return;
         }
 
-        const winRateOf = (p) => (p.matches + p.dMatches) > 0
-            ? (((p.wins + p.dWins) / (p.matches + p.dMatches)) * 100).toFixed(1)
-            : '0.0';
+        const winRate = (matches, wins) => (matches > 0 ? ((wins / matches) * 100).toFixed(1) : '0.0');
 
-        const currentRows = teamPlayers.map((p, index) => {
-            const nameClass = index < 4 ? 'team-player-name--bold' : '';
+        // Bold marks the four most active players, so only players who have
+        // actually played can occupy those slots.
+        let playedRank = 0;
+        const currentRows = teamPlayers.map((p) => {
+            const nameClass = (hasPlayed(p) && playedRank++ < 4) ? 'team-player-name--bold' : '';
+            const matches = p.matches + p.dMatches;
+            const wins = p.wins + p.dWins;
             return `
-                <tr>
-                    <td class="${nameClass}">${escapeHtml(p.name)}</td>
-                    <td class="team-player-rating-cell">${p.rating.toFixed(2)}</td>
-                    <td>${p.matches + p.dMatches}</td>
-                    <td>${p.wins + p.dWins}</td>
+                <tr${p.rosterOnly ? ' class="team-player-row--unplayed"' : ''}>
+                    <td class="${nameClass}">
+                        ${escapeHtml(p.name)}
+                        ${p.rosterOnly ? '<span class="team-player-former-note">zatiaľ neodohral zápas</span>' : ''}
+                    </td>
+                    <td class="team-player-rating-cell">${p.rosterOnly ? '–' : p.rating.toFixed(2)}</td>
+                    <td>${matches}</td>
+                    <td>${wins}</td>
                     <td>${p.losses + p.dLosses}</td>
-                    <td>${winRateOf(p)}%</td>
+                    <td>${winRate(matches, wins)}%</td>
                 </tr>
             `;
         }).join('');
 
         let formerRows = '';
         if (formerEntries.length > 0) {
-            const seasonsLabel = formerEntries.length === 1 ? 'sezóne' : 'sezónach';
             formerRows = `
                 <tr class="team-players-divider">
-                    <td colspan="6">Bývalí hráči (hrali za tím v predchádzajúcich ${seasonsLabel})</td>
+                    <td colspan="6">Bývalí hráči (štatistiky len za tento tím)</td>
                 </tr>
             ` + formerEntries.map(({ player: p, seasons, currentTeam }) => {
+                // Only what they did in this team's colours, not their whole career.
+                const stats = getPlayerStatsForTeam(p, teamName);
                 const note = [seasons.join(', '), currentTeam ? `teraz ${currentTeam}` : null]
                     .filter(Boolean)
                     .join(' • ');
@@ -7752,11 +7822,11 @@ function renderMyTeamPage() {
                             ${escapeHtml(p.name)}
                             ${note ? `<span class="team-player-former-note">${escapeHtml(note)}</span>` : ''}
                         </td>
-                        <td class="team-player-rating-cell">${p.rating.toFixed(2)}</td>
-                        <td>${p.matches + p.dMatches}</td>
-                        <td>${p.wins + p.dWins}</td>
-                        <td>${p.losses + p.dLosses}</td>
-                        <td>${winRateOf(p)}%</td>
+                        <td class="team-player-rating-cell">${stats.rating !== null ? stats.rating.toFixed(2) : '–'}</td>
+                        <td>${stats.matches}</td>
+                        <td>${stats.wins}</td>
+                        <td>${stats.losses}</td>
+                        <td>${winRate(stats.matches, stats.wins)}%</td>
                     </tr>
                 `;
             }).join('');
@@ -8874,7 +8944,8 @@ function renderMyTeamPage() {
                 targetEl.innerHTML = `<div class="lineup-hint">Vyberte tím pre zobrazenie hráčov.</div>`;
                 return;
             }
-            const roster = teamMap.get(teamName) || [];
+            // A prediction can only use players who have a real rating.
+            const roster = (teamMap.get(teamName) || []).filter(hasPlayed);
             if (roster.length === 0) {
                 targetEl.innerHTML = `<div class="lineup-hint">Žiadni hráči k dispozícii.</div>`;
                 return;
@@ -8919,7 +8990,8 @@ function renderMyTeamPage() {
         };
 
         const collectLineup = (teamName, targetEl) => {
-            const roster = teamMap.get(teamName) || [];
+            // A prediction can only use players who have a real rating.
+            const roster = (teamMap.get(teamName) || []).filter(hasPlayed);
             const fallback = roster.slice(0, 4).map(p => p.name);
             const selectedNames = Array.from(targetEl?.querySelectorAll('input[type="checkbox"]:checked') || []).map(el => el.value);
             const namesRaw = selectedNames.length > 0 ? selectedNames : fallback;
