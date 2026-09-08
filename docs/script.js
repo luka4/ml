@@ -883,6 +883,7 @@ function ensurePlayerEffectivenessHistory(player) {
 const processDataCache = new Map();
 function clearProcessDataCache() {
     processDataCache.clear();
+    teamNameCanonicalIndex = null;
 }
 
 // Score distribution calculation for match predictions
@@ -915,6 +916,213 @@ function sortRoster(list) {
         if (a.rating !== b.rating) return b.rating - a.rating;
         return a.name.localeCompare(b.name, 'sk', {sensitivity: 'base'});
     });
+}
+
+
+// ============================================================
+// SEASON ROSTERS
+// ------------------------------------------------------------
+// `seasonRosters.js` loads the `DB_<SEASON>` sheets, which say which team every
+// player was registered for in a given season. Match data alone only knows the
+// team a player last played for, so these helpers are what make a team roster
+// (and therefore a team rating) correct for the season being looked at.
+// Every helper degrades to the match-derived team when roster data is missing.
+// ============================================================
+
+// Normalize a name/team the same way seasonRosters.js does, so both sides match.
+const normalizeRosterName = (name) => String(name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+const normalizeTeamKey = (name) => String(name || '').replace(/\s+/g, ' ').trim().toUpperCase();
+
+// Team names in the roster sheets may be spelled slightly differently from match
+// data ("Bernard club" vs "BERNARD Club"). Match data is the canonical spelling,
+// because logos and team filters are keyed off it.
+let teamNameCanonicalIndex = null;
+function canonicalTeamName(teamName) {
+    if (!teamName) return teamName;
+    if (!teamNameCanonicalIndex) {
+        teamNameCanonicalIndex = new Map();
+        (window.matchResults || []).forEach(m => {
+            [m.player_a_team, m.player_b_team].forEach(t => {
+                const key = normalizeTeamKey(t);
+                if (key && !teamNameCanonicalIndex.has(key)) teamNameCanonicalIndex.set(key, String(t).trim());
+            });
+        });
+    }
+    return teamNameCanonicalIndex.get(normalizeTeamKey(teamName)) || teamName;
+}
+
+function seasonRostersAvailable() {
+    // 4. liga is a different competition with its own teams - the miniliga
+    // rosters must not be applied to it.
+    if (localStorage.getItem('show_4_lliga') === 'true') return false;
+    return !!(window.SeasonRosters && window.SeasonRosters.hasData());
+}
+
+function getRosterSeasons() {
+    return seasonRostersAvailable() ? window.SeasonRosters.seasons() : [];
+}
+
+// Newest season we have a roster for - what "current squad" means everywhere.
+function getCurrentRosterSeason() {
+    return seasonRostersAvailable() ? window.SeasonRosters.currentSeason() : null;
+}
+
+// Team the player was registered for in `season`, or null when unknown.
+function getPlayerTeamForSeason(playerName, season) {
+    if (!seasonRostersAvailable() || !season) return null;
+    return window.SeasonRosters.teamOfPlayer(playerName, season);
+}
+
+// [{season, team}] for every season the player is listed in, oldest -> newest.
+function getPlayerSeasonTeams(playerName) {
+    if (!seasonRostersAvailable()) return [];
+    return window.SeasonRosters.seasonTeamsOfPlayer(playerName);
+}
+
+// The team a player belongs to now: the current season roster wins over the team
+// derived from their most recent match (which is stale once a player transfers).
+function getCurrentTeamOfPlayer(player) {
+    const name = typeof player === 'string' ? player : player?.name;
+    const fallback = typeof player === 'string' ? null : player?.team;
+    const rosterTeam = getPlayerTeamForSeason(name, getCurrentRosterSeason());
+    return rosterTeam ? canonicalTeamName(rosterTeam) : (fallback || null);
+}
+
+// Renders the "season - team" list for a player into `container`.
+// Returns true when there was something to show.
+function renderPlayerSeasonTeams(container, playerName) {
+    if (!container) return false;
+    const entries = getPlayerSeasonTeams(playerName);
+    if (entries.length === 0) {
+        container.innerHTML = '';
+        container.hidden = true;
+        return false;
+    }
+    const current = getCurrentRosterSeason();
+    container.innerHTML = entries.map(({ season, team }) => `
+        <span class="season-team${season === current ? ' season-team--current' : ''}">
+            <span class="season-team-season">${escapeHtml(season)}</span>
+            <span class="season-team-name">${escapeHtml(canonicalTeamName(team))}</span>
+        </span>
+    `).join('');
+    container.hidden = false;
+    return true;
+}
+
+// Player names on the team's roster for `season`, or null when we have none.
+function getSeasonRosterNames(teamName, season) {
+    if (!seasonRostersAvailable() || !season || !teamName) return null;
+    return window.SeasonRosters.rosterOfTeam(teamName, season);
+}
+
+// Lookup of processData() players by normalized name, memoized per players object.
+const playersByRosterNameCache = new WeakMap();
+function getPlayersByRosterName(playersData) {
+    let index = playersByRosterNameCache.get(playersData);
+    if (!index) {
+        index = new Map();
+        Object.values(playersData).forEach(p => index.set(normalizeRosterName(p.name), p));
+        playersByRosterNameCache.set(playersData, index);
+    }
+    return index;
+}
+
+// Player objects for the team's roster in `season`.
+// Falls back to `fallbackPlayers` when that season has no roster for the team.
+function getSeasonTeamPlayers(teamName, season, fallbackPlayers = [], playersData = null) {
+    const names = getSeasonRosterNames(teamName, season);
+    if (!names || names.length === 0) return fallbackPlayers;
+    const index = getPlayersByRosterName(playersData || processData().players);
+    const list = [];
+    names.forEach(name => {
+        const p = index.get(normalizeRosterName(name));
+        if (p) list.push(p);
+    });
+    // If not a single name lined up with match data (typo in the sheet, renamed
+    // player) keep the match-derived squad rather than reporting an empty team.
+    return list.length ? list : fallbackPlayers;
+}
+
+// Groups players into a team -> roster map. When roster data covers `season`
+// (default: the current season) membership comes from the roster; teams the
+// roster does not mention keep the match-derived grouping.
+function buildTeamMap(playerArr, season = undefined) {
+    const useSeason = season === undefined ? getCurrentRosterSeason() : season;
+    const rosterTeams = (useSeason && seasonRostersAvailable())
+        ? window.SeasonRosters.teamsOfSeason(useSeason)
+        : null;
+
+    const map = new Map();
+    const push = (team, p) => {
+        if (!team || team === 'N/A') return;
+        if (!map.has(team)) map.set(team, []);
+        map.get(team).push(p);
+    };
+
+    if (rosterTeams && rosterTeams.size > 0) {
+        const index = new Map(playerArr.map(p => [normalizeRosterName(p.name), p]));
+        const placed = new Set();
+        const covered = new Set(); // roster teams that matched at least one known player
+
+        rosterTeams.forEach((entry, key) => {
+            // Use the match-data spelling so logos and team filters keep matching.
+            const display = canonicalTeamName(entry.name);
+            entry.players.forEach(name => {
+                const p = index.get(normalizeRosterName(name));
+                if (!p) return; // on the roster but has not played a match yet
+                push(display, p);
+                placed.add(p);
+                covered.add(key);
+            });
+        });
+
+        // Players of teams the roster does not cover (older seasons, teams that
+        // joined mid-season, a team whose names do not line up with match data)
+        // stay grouped by their match-derived team.
+        playerArr.forEach(p => {
+            if (placed.has(p) || covered.has(normalizeTeamKey(p.team))) return;
+            push(p.team, p);
+        });
+    } else {
+        playerArr.forEach(p => push(p.team, p));
+    }
+
+    map.forEach((list, key) => map.set(key, sortRoster(list)));
+    return map;
+}
+
+// Players who were on the team in an earlier season but are not on its roster
+// for `season`. Returns [{player, seasons: [...], currentTeam}] sorted like a roster.
+function getFormerTeamPlayers(playerArr, teamName, season = undefined) {
+    const useSeason = season === undefined ? getCurrentRosterSeason() : season;
+    if (!useSeason || !seasonRostersAvailable()) return [];
+
+    const seasons = getRosterSeasons();
+    const currentIndex = seasons.indexOf(useSeason);
+    const pastSeasons = currentIndex >= 0 ? seasons.slice(0, currentIndex) : [];
+    if (pastSeasons.length === 0) return [];
+
+    const key = normalizeTeamKey(teamName);
+    const index = new Map(playerArr.map(p => [normalizeRosterName(p.name), p]));
+    const found = new Map();
+
+    pastSeasons.forEach(pastSeason => {
+        (window.SeasonRosters.rosterOfTeam(teamName, pastSeason) || []).forEach(name => {
+            const nameKey = normalizeRosterName(name);
+            const nowIn = window.SeasonRosters.teamOfPlayer(name, useSeason);
+            if (nowIn && normalizeTeamKey(nowIn) === key) return; // still with the team
+            const player = index.get(nameKey);
+            if (!player) return;
+            if (!found.has(nameKey)) {
+                found.set(nameKey, { player, seasons: [], currentTeam: nowIn || null });
+            }
+            found.get(nameKey).seasons.push(pastSeason);
+        });
+    });
+
+    const entries = Array.from(found.values());
+    const order = new Map(sortRoster(entries.map(e => e.player)).map((p, i) => [p.name, i]));
+    return entries.sort((a, b) => (order.get(a.player.name) ?? 0) - (order.get(b.player.name) ?? 0));
 }
 
 // Get player rating before a specific match
@@ -1133,11 +1341,16 @@ function getRoundOrderFromStr(roundStr) {
 }
 
 // Calculate team ratings for a given round (using player history)
-function calculateTeamRatingsForRound(teamPlayers, round) {
+// `teamName` lets the roster be resolved for the season the round belongs to, so a
+// team's rating history reflects who was actually in the squad back then.
+function calculateTeamRatingsForRound(teamPlayers, round, teamName = null) {
     const roundOrder = (typeof round.roundOrder === 'number')
         ? round.roundOrder
         : getRoundOrderFromStr(round.name);
-    const playersAtRound = teamPlayers.map(p => {
+    const squad = teamName
+        ? getSeasonTeamPlayers(teamName, round.season, teamPlayers)
+        : teamPlayers;
+    const playersAtRound = squad.map(p => {
         // Find the last history entry that matches this round
         // History keys format: "20251-01|1. kolo (JAR 2025)"
         const targetPrefix = `${round.seasonOrder}-${String(roundOrder).padStart(4, '0')}`;
@@ -1538,6 +1751,14 @@ function processData(currentRoundIdOverride = null) {
         p.effectivenessHistory = {};
         p._effectivenessHistoryReady = false;
     });
+
+    // `team` so far is "the team they last played a match for", which goes stale the
+    // moment a player transfers. The season roster sheets know better - use them.
+    if (seasonRostersAvailable()) {
+        Object.values(players).forEach(p => {
+            p.team = getCurrentTeamOfPlayer(p) || p.team;
+        });
+    }
 
     const result = {players, roundsSet, totalSets, latestRoundName, latestRoundId, upsetsList};
     processDataCache.set(cacheKey, result);
@@ -2145,15 +2366,7 @@ function renderHomePage() {
 
     // Create team map for ratings
     const playerArr = Object.values(players);
-    const teamMap = new Map();
-    // Using global sortRoster function
-    playerArr.forEach(p => {
-        if (p.team && p.team !== 'N/A') {
-            if (!teamMap.has(p.team)) teamMap.set(p.team, []);
-            teamMap.get(p.team).push(p);
-        }
-    });
-    teamMap.forEach((list, key) => teamMap.set(key, sortRoster(list)));
+    const teamMap = buildTeamMap(playerArr);
 
     // Stats
     const uniqueTeamMatches = new Set(playedMatches.map(m => `${getMatchRoundId(m)}_${m.player_a_team}_${m.player_b_team}`));
@@ -2458,14 +2671,7 @@ function renderHighlightsPage() {
 
         const {players, upsetsList} = processData(effectiveRoundId);
         const playerArr = Object.values(players);
-        const teamMap = new Map();
-        playerArr.forEach(p => {
-            if (p.team && p.team !== 'N/A') {
-                if (!teamMap.has(p.team)) teamMap.set(p.team, []);
-                teamMap.get(p.team).push(p);
-            }
-        });
-        teamMap.forEach((list, key) => teamMap.set(key, sortRoster(list)));
+        const teamMap = buildTeamMap(playerArr);
 
         if (selectedRoundMatches.length > 0) {
             renderMatchList(selectedRoundMatches, latestRoundContainer, false, players, teamMap);
@@ -2658,16 +2864,8 @@ function renderSchedulePage() {
     const {players} = processData();
     const playerArr = Object.values(players);
 
-    // Create team map
-    const teamMap = new Map();
-    playerArr.forEach(p => {
-        if (p.team && p.team !== 'N/A') {
-            if (!teamMap.has(p.team)) teamMap.set(p.team, []);
-            teamMap.get(p.team).push(p);
-        }
-    });
-    // Use global sortRoster for consistent rating calc
-    teamMap.forEach((list, key) => teamMap.set(key, sortRoster(list)));
+    // Create team map (season roster aware)
+    const teamMap = buildTeamMap(playerArr);
 
     // Get team names for filter
     const teamNames = Array.from(teamMap.keys()).sort((a, b) => a.localeCompare(b, 'sk', {sensitivity: 'base'}));
@@ -2817,16 +3015,8 @@ function renderResultsPage() {
     const {players} = processData();
     const playerArr = Object.values(players);
     
-    // Create team map
-    const teamMap = new Map();
-    // Using global sortRoster function
-    playerArr.forEach(p => {
-        if (p.team && p.team !== 'N/A') {
-            if (!teamMap.has(p.team)) teamMap.set(p.team, []);
-            teamMap.get(p.team).push(p);
-        }
-    });
-    teamMap.forEach((list, key) => teamMap.set(key, sortRoster(list)));
+    // Create team map (season roster aware)
+    const teamMap = buildTeamMap(playerArr);
 
     // Get team names for filter
     const teamNames = Array.from(teamMap.keys()).sort((a, b) => a.localeCompare(b, 'sk', {sensitivity: 'base'}));
@@ -2996,7 +3186,8 @@ function renderMatchList(matches, container, appendToProvided, playersData = nul
         if (!teamMapData || !playersData) {
             return { actualRating: 0, activeRating: 0, overallRating: 0 };
         }
-        const teamPlayers = teamMapData.get(teamName) || [];
+        // Squad registered for the season this match belongs to.
+        const teamPlayers = getSeasonTeamPlayers(teamName, match.season, teamMapData.get(teamName) || [], playersData);
         if (teamPlayers.length === 0) {
             return { actualRating: 0, activeRating: 0, overallRating: 0 };
         }
@@ -3156,11 +3347,17 @@ function renderMatchList(matches, container, appendToProvided, playersData = nul
     };
 
     // Calculate current team ratings (for unplayed matches - uses current ratings, not before-match)
-    const calculateCurrentTeamRatings = (teamName) => {
+    const calculateCurrentTeamRatings = (teamName, season = null) => {
         if (!teamMapData || !playersData) {
             return { activeRating: 0, overallRating: 0 };
         }
-        const teamPlayers = teamMapData.get(teamName) || [];
+        // Squad registered for the season of the upcoming match (current season by default).
+        const teamPlayers = getSeasonTeamPlayers(
+            teamName,
+            season || getCurrentRosterSeason(),
+            teamMapData.get(teamName) || [],
+            playersData
+        );
         if (teamPlayers.length === 0) {
             return { activeRating: 0, overallRating: 0 };
         }
@@ -3642,8 +3839,8 @@ function renderMatchList(matches, container, appendToProvided, playersData = nul
             let ratingsB = null;
             
             if (playersData && teamMapData) {
-                ratingsA = calculateCurrentTeamRatings(match.teamA);
-                ratingsB = calculateCurrentTeamRatings(match.teamB);
+                ratingsA = calculateCurrentTeamRatings(match.teamA, match.season);
+                ratingsB = calculateCurrentTeamRatings(match.teamB, match.season);
                 
                 // Prediction based on active rating
                 // Using global winProb function
@@ -4615,10 +4812,12 @@ function renderRatingPage() {
         setCompareStatus('');
         const playerRanking = ratingRanking.get(normalizePlayerKey(p.name)) || '?';
         document.getElementById('headerName').innerText = `#${playerRanking} ${p.name}`;
-        document.getElementById('headerTeam').innerText = p.team || "";
+        const currentTeam = getCurrentTeamOfPlayer(p) || "";
+        document.getElementById('headerTeam').innerText = currentTeam;
+        renderPlayerSeasonTeams(document.getElementById('headerSeasonTeams'), p.name);
         const logoEl = document.getElementById('headerTeamLogo');
         const logoWrap = document.getElementById('headerTeamLogoWrapper');
-        const teamLogoSrc = getTeamLogoSrc(p.team);
+        const teamLogoSrc = getTeamLogoSrc(currentTeam);
         if (logoEl && logoWrap) {
             if (teamLogoSrc) {
                 logoEl.src = teamLogoSrc;
@@ -5339,9 +5538,16 @@ function renderTablePage() {
         });
 
         Object.values(teams).forEach(t => {
-            const teamPlayers = Object.values(players).filter(p => p.team === t.name);
+            const derivedPlayers = Object.values(players).filter(p => p.team === t.name);
+            // Squad of the season the standings round belongs to, not "whoever played last".
+            const teamPlayers = getSeasonTeamPlayers(
+                t.name,
+                latestRound ? latestRound.season : getCurrentRosterSeason(),
+                derivedPlayers,
+                players
+            );
             if (latestRound && teamPlayers.length > 0) {
-                const { activeRating } = calculateTeamRatingsForRound(teamPlayers, latestRound);
+                const { activeRating } = calculateTeamRatingsForRound(teamPlayers, latestRound, t.name);
                 t.avgRating = activeRating !== null ? activeRating : 0;
             } else {
                 const topPlayers = teamPlayers
@@ -5491,14 +5697,8 @@ function renderPredictionPage() {
     const allPlayers = Object.values(players).filter(p => p.name && p.team && p.team !== 'N/A');
     const playerLookup = new Map(allPlayers.map(p => [normalizeKey(p.name), p]));
 
-    // Group players by team and sort them by activity then rating
-    const teamMap = new Map();
-    // Using global sortRoster function
-    allPlayers.forEach(p => {
-        if (!teamMap.has(p.team)) teamMap.set(p.team, []);
-        teamMap.get(p.team).push(p);
-    });
-    teamMap.forEach((list, key) => teamMap.set(key, sortRoster(list)));
+    // Group players by team (season roster aware) and sort them by activity then rating
+    const teamMap = buildTeamMap(allPlayers);
     const teamNames = Array.from(teamMap.keys()).sort((a, b) => a.localeCompare(b, 'sk', {sensitivity: 'base'}));
 
     const teamSelectA = document.getElementById('teamSelectA');
@@ -6707,7 +6907,8 @@ function renderMyStatsPage() {
 
         // Header
         document.getElementById('myStatsName').textContent = p.name;
-        document.getElementById('myStatsTeam').textContent = p.team || '-';
+        document.getElementById('myStatsTeam').textContent = getCurrentTeamOfPlayer(p) || '-';
+        renderPlayerSeasonTeams(document.getElementById('myStatsSeasonTeams'), p.name);
         document.getElementById('myStatsAvatar').textContent = p.name.charAt(0).toUpperCase();
 
         // Core stats
@@ -6958,16 +7159,8 @@ function renderMyTeamPage() {
     const playerArr = Object.values(players);
     const URL_PARAM_NAME = 'team';
 
-    // Create team map
-    const teamMap = new Map();
-    // Using global sortRoster function
-    playerArr.forEach(p => {
-        if (p.team && p.team !== 'N/A') {
-            if (!teamMap.has(p.team)) teamMap.set(p.team, []);
-            teamMap.get(p.team).push(p);
-        }
-    });
-    teamMap.forEach((list, key) => teamMap.set(key, sortRoster(list)));
+    // Create team map from the current season roster (falls back to match data)
+    const teamMap = buildTeamMap(playerArr);
     const teamNames = Array.from(teamMap.keys()).sort((a, b) => a.localeCompare(b, 'sk', {sensitivity: 'base'}));
 
     // URL query parameter helpers
@@ -7246,7 +7439,7 @@ function renderMyTeamPage() {
 
         // Local helper to calculate actualRating for a team match
         const calculateActualRatingForTeamMatch = (teamName, teamMatch) => {
-            const teamPlayers = teamMap.get(teamName) || [];
+            const teamPlayers = getSeasonTeamPlayers(teamName, teamMatch.season, teamMap.get(teamName) || [], players);
             if (teamPlayers.length === 0) {
                 return 0;
             }
@@ -7383,7 +7576,7 @@ function renderMyTeamPage() {
 
         sortedRounds.forEach(round => {
             // Calculate ratings for current team
-            const { activeRating, overallRating } = calculateTeamRatingsForRound(teamPlayers, round);
+            const { activeRating, overallRating } = calculateTeamRatingsForRound(teamPlayers, round, teamName);
             const actualRating = calculateActualRatingForRound(teamName, round);
             
             if (activeRating !== null && overallRating !== null) {
@@ -7394,7 +7587,7 @@ function renderMyTeamPage() {
 
                 // Calculate ratings for comparison team if provided
                 if (compareTeamPlayers && compareTeamName) {
-                    const compareRatings = calculateTeamRatingsForRound(compareTeamPlayers, round);
+                    const compareRatings = calculateTeamRatingsForRound(compareTeamPlayers, round, compareTeamName);
                     const compareActualRating = calculateActualRatingForRound(compareTeamName, round);
                     compareActiveRatings.push(compareRatings.activeRating);
                     compareOverallRatings.push(compareRatings.overallRating);
@@ -7511,16 +7704,65 @@ function renderMyTeamPage() {
     };
 
     // Render players list
-    const renderPlayersList = (teamPlayers) => {
+    const renderPlayersList = (teamPlayers, teamName) => {
         const container = document.getElementById('myTeamPlayersList');
         if (!container) return;
 
-        if (teamPlayers.length === 0) {
+        // Players who were on this team in an earlier season but are not on the
+        // current roster - shown below the squad, dimmed.
+        const formerEntries = getFormerTeamPlayers(playerArr, teamName);
+
+        if (teamPlayers.length === 0 && formerEntries.length === 0) {
             container.innerHTML = '<p class="no-match">Žiadni hráči</p>';
             return;
         }
 
-        const tableHTML = `
+        const winRateOf = (p) => (p.matches + p.dMatches) > 0
+            ? (((p.wins + p.dWins) / (p.matches + p.dMatches)) * 100).toFixed(1)
+            : '0.0';
+
+        const currentRows = teamPlayers.map((p, index) => {
+            const nameClass = index < 4 ? 'team-player-name--bold' : '';
+            return `
+                <tr>
+                    <td class="${nameClass}">${escapeHtml(p.name)}</td>
+                    <td class="team-player-rating-cell">${p.rating.toFixed(2)}</td>
+                    <td>${p.matches + p.dMatches}</td>
+                    <td>${p.wins + p.dWins}</td>
+                    <td>${p.losses + p.dLosses}</td>
+                    <td>${winRateOf(p)}%</td>
+                </tr>
+            `;
+        }).join('');
+
+        let formerRows = '';
+        if (formerEntries.length > 0) {
+            const seasonsLabel = formerEntries.length === 1 ? 'sezóne' : 'sezónach';
+            formerRows = `
+                <tr class="team-players-divider">
+                    <td colspan="6">Bývalí hráči (hrali za tím v predchádzajúcich ${seasonsLabel})</td>
+                </tr>
+            ` + formerEntries.map(({ player: p, seasons, currentTeam }) => {
+                const note = [seasons.join(', '), currentTeam ? `teraz ${currentTeam}` : null]
+                    .filter(Boolean)
+                    .join(' • ');
+                return `
+                    <tr class="team-player-row--former">
+                        <td>
+                            ${escapeHtml(p.name)}
+                            ${note ? `<span class="team-player-former-note">${escapeHtml(note)}</span>` : ''}
+                        </td>
+                        <td class="team-player-rating-cell">${p.rating.toFixed(2)}</td>
+                        <td>${p.matches + p.dMatches}</td>
+                        <td>${p.wins + p.dWins}</td>
+                        <td>${p.losses + p.dLosses}</td>
+                        <td>${winRateOf(p)}%</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        container.innerHTML = `
             <div class="team-players-table-wrapper">
                 <table class="team-players-table">
                     <thead>
@@ -7534,28 +7776,12 @@ function renderMyTeamPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${teamPlayers.map((p, index) => {
-                            const singlesWinRate = p.matches > 0 ? ((p.wins / p.matches) * 100).toFixed(1) : '0.0';
-                            const doublesWinRate = p.dMatches > 0 ? ((p.dWins / p.dMatches) * 100).toFixed(1) : '0.0';
-                            const winRate = (p.matches + p.dMatches) > 0 ? (((p.wins + p.dWins) / (p.matches + p.dMatches)) * 100).toFixed(1) : '0.0';
-                            const isTopFour = index < 4;
-                            const nameClass = isTopFour ? 'team-player-name--bold' : '';
-                            return `
-                                <tr>
-                                    <td class="${nameClass}">${escapeHtml(p.name)}</td>
-                                    <td class="team-player-rating-cell">${p.rating.toFixed(2)}</td>
-                                    <td>${p.matches + p.dMatches}</td>
-                                    <td>${p.wins + p.dWins}</td>
-                                    <td>${p.losses + p.dLosses}</td>
-                                    <td>${winRate}%</td>
-                                </tr>
-                            `;
-                        }).join('')}
+                        ${currentRows}
+                        ${formerRows}
                     </tbody>
                 </table>
             </div>
         `;
-        container.innerHTML = tableHTML;
     };
 
     // Render upcoming matches
@@ -7638,7 +7864,8 @@ function renderMyTeamPage() {
 
     // Calculate team ratings for a match
     const calculateTeamRatingsForMatch = (teamName, match) => {
-        const teamPlayers = teamMap.get(teamName) || [];
+        // Squad registered for the season this match belongs to.
+        const teamPlayers = getSeasonTeamPlayers(teamName, match.season, teamMap.get(teamName) || [], players);
         if (teamPlayers.length === 0) {
             return { actualRating: 0, activeRating: 0, overallRating: 0 };
         }
@@ -8879,7 +9106,7 @@ function renderMyTeamPage() {
         populateCompareSelect(teamName);
 
         // Render sections
-        renderPlayersList(teamPlayers);
+        renderPlayersList(teamPlayers, teamName);
         // Defer chart render slightly to allow layout to settle (fixes zero-size canvas on reload with ?team=)
         setTimeout(() => {
             const compareTeamPlayers = currentCompareTeam ? (teamMap.get(currentCompareTeam) || []) : null;
@@ -9236,6 +9463,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.matchResultsPromise) await window.matchResultsPromise;
     } catch (e) {
         console.error('Failed to load match data:', e);
+    }
+
+    // Per-season team membership (DB_<SEASON> sheets). Needed before the first render:
+    // team rosters, team ratings and a player's team all depend on it.
+    try {
+        if (window.seasonRostersPromise) await window.seasonRostersPromise;
+    } catch (e) {
+        console.error('Failed to load season rosters:', e);
     }
 
     requestAnimationFrame(() => {

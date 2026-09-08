@@ -1157,3 +1157,9 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Season chips sit under the player's team in the header, aligned with it. */
+.season-teams--mystats {
+  justify-content: flex-start;
+  margin-top: 6px;
+}
