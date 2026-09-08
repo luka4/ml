@@ -9,10 +9,15 @@ const GoogleSheetsLoader = (() => {
    * Builds a Google Sheets Visualization API URL.
    * @param {string} sheetName - The name of the sheet tab.
    * @param {string} query - The SQL-like query (e.g., 'SELECT P', 'SELECT B').
+   * @param {object} [extraParams] - Extra query params (e.g., { headers: '0' } for header-less tabs).
    * @returns {string} - The full URL.
    */
-  function buildUrl(sheetName, query) {
-    return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tq=${encodeURIComponent(query)}`;
+  function buildUrl(sheetName, query, extraParams = null) {
+    let url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tq=${encodeURIComponent(query)}`;
+    Object.entries(extraParams || {}).forEach(([key, value]) => {
+      url += `&${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+    });
+    return url;
   }
 
   /**
@@ -35,11 +40,12 @@ const GoogleSheetsLoader = (() => {
    * @param {string} options.sheetName - Name of the sheet tab.
    * @param {string} options.query - SQL-like query (e.g., 'SELECT P', 'SELECT B').
    * @param {boolean} [options.cache=false] - Whether to use cache (default: no-store).
+   * @param {object} [options.extraParams] - Extra query params appended to the URL.
    * @returns {Promise<Array>} - Array of rows from the response.
    */
-  async function fetchSheet({ sheetName, query, cache = false }) {
+  async function fetchSheet({ sheetName, query, cache = false, extraParams = null }) {
     try {
-      const url = buildUrl(sheetName, query);
+      const url = buildUrl(sheetName, query, extraParams);
       const res = await fetch(url, { cache: cache ? 'default' : 'no-store' });
       
       if (!res.ok) {

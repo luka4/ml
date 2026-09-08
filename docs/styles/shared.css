@@ -1912,3 +1912,50 @@ a {
     transform: none;
   }
 }
+
+/* ------------------------------------------------------------
+   Per-season team membership ("season - team" chips on a player)
+   Colors follow the surrounding text so the chips work both on the
+   plain modal header and on the coloured My Stats header.
+   ------------------------------------------------------------ */
+.season-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* `display: flex` above would otherwise beat the browser's [hidden] rule. */
+.season-teams[hidden] {
+  display: none;
+}
+
+.season-team {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  opacity: 0.7;
+}
+
+.season-team--current {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.season-team-season {
+  font-size: 0.9em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.season-team-name {
+  font-weight: 700;
+}
