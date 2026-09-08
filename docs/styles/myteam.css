@@ -127,6 +127,12 @@
   background: transparent;
 }
 
+/* On the roster but yet to play - no rating to show, so mute the rating cell */
+.team-players-table tbody tr.team-player-row--unplayed .team-player-rating-cell {
+  color: var(--color-muted, #6b7280);
+  font-weight: 500;
+}
+
 /* Players from previous seasons - dimmed, they do not count towards team ratings */
 .team-players-table tbody tr.team-player-row--former td {
   opacity: 0.55;
