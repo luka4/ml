@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **This repo is retired.** The live site moved to **miniliga.sk**, served from the `luka4/miniliga` repo (local clone `~/server/miniliga`). Make all site and data changes there. Here, every `docs/*.html` page is only a redirect to the same path on miniliga.sk; the remaining JS/CSS/data files and the Autrin workflow are unused leftovers. The rest of this file describes the site as it was before the move.
+
 ## Overview
 
 "Spinbook" / miniliga.online: a table-tennis league site (Elo-style player and team ratings, standings, schedule, predictions, per-player and per-team stats). It is a **static, no-build site** served from `docs/` (GitHub Pages, custom domain in `docs/CNAME`). There is no package manager, bundler, linter or test suite. Edit files directly and open the pages in a browser, or serve locally with `python3 -m http.server -d docs`.
